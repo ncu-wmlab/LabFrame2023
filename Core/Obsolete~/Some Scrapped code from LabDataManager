@@ -1,0 +1,511 @@
+// Data Uploader
+    private ConcurrentQueue<string> _uploadQueue;
+    private string _sshKey;
+    private ConnectionInfo _connectionInfo;
+    _uploadQueue = new ConcurrentQueue<string>();
+    _sshKey = "";
+    _connectionInfo = null;
+
+    /// <summary>
+    /// 根據 JWT Key 和 Device ID 取得 SFTP 連線權限
+    /// </summary>
+    public void SetConnectInfo(string jwt, string deviceID)
+    {
+        // SSH.NET config
+        // string Host = "s-57630d8571924ff38.server.transfer.ap-northeast-1.amazonaws.com";
+        // string Host = "s-a9089b860860442a9.server.transfer.ap-northeast-1.amazonaws.com";
+
+        if (_connectionInfo == null)
+        {
+            StartCoroutine(GetConnectInfo(jwt, deviceID));
+        }
+    }
+    private IEnumerator GetConnectInfo(string jwt, string deviceID)
+    {
+        string UserName = "wmlab";
+        string JWT_URL = "http://ncuaiot.ap-northeast-1.elasticbeanstalk.com/api/SysParameter?ParametervarSect=DeviceConfig&ParametervarName=" + deviceID;
+
+        UnityWebRequest request = UnityWebRequest.Get(JWT_URL);
+
+        request.SetRequestHeader("Content-Type", "application/json; charset=utf-8");
+        request.SetRequestHeader("Authorization", "Bearer " + jwt);
+
+        yield return request.SendWebRequest();
+        if (request.error == null)
+        {
+            SSHGet sshGet = JsonConvert.DeserializeObject<SSHGet>(request.downloadHandler.text);
+
+            Debug.Log(sshGet.sshkey);
+            _sshKey = sshGet.sshkey;
+        }
+        else
+        {
+            Debug.Log("ERROR：" + request.error);
+            request.Dispose();
+            yield break;
+        }
+        request.Dispose();
+
+
+        // SSHKey
+        PrivateKeyFile privateKey;
+
+        try
+        {
+            using (var keystrm = new MemoryStream(Encoding.ASCII.GetBytes(_sshKey)))
+            {
+                privateKey = new PrivateKeyFile(keystrm);
+            }
+
+        }
+        catch (Exception e)
+        {
+            SendLog(new SendInfo("SFTP：" + e.Message));
+            privateKey = null;
+        }
+
+        // Set ConnectionInfo
+        var methods = new List<AuthenticationMethod>();
+        //methods.Add(new PasswordAuthenticationMethod(UserName, PassWord));
+        methods.Add(new PrivateKeyAuthenticationMethod(UserName, new[] { privateKey }));
+        _connectionInfo = new ConnectionInfo(Config.ServerPath, UserName, methods.ToArray());
+
+    }
+
+
+    /// <summary>
+    /// 上傳掃描，並開始上傳
+    /// </summary>
+    public bool UploadData()
+    {
+        if (!_labDataConfig.SendToServer) 
+        {
+            SendLog( new SendInfo("Config [SendToServer] is false"));
+            return false;
+        }
+
+        string[] files = LabTools.GetDataList( LabTools.sendDir);
+        if( files == null || files.Length == 0)
+        {
+            SendLog( new SendInfo("All saves are already uploaded."));
+            return false;
+        }
+
+        foreach (string file in files)
+        {
+            _uploadQueue.Enqueue(file);
+        }
+        Upload();
+        return true;
+    }
+
+
+    #region Upload Data
+
+    // Uplaod Timer
+    private System.Diagnostics.Stopwatch sw;
+    enum TimerStauts
+    {
+        Start,
+        Success,
+        Fail
+    }
+
+    private void Upload()
+    {
+        if (_uploadQueue.TryDequeue(out var dataPath))
+        {
+            SendLog( new SendInfo("Sending Data  ... "));
+            //StartCoroutine(UploadRequest(dataPath));
+            //new Thread(() => FTPUpload(dataPath)).Start();
+            new Thread(() => SFTPUpload(dataPath)).Start();
+        }
+        else
+        {
+            SendLog( new SendInfo("All data have been uploaded."));
+        }
+    }
+
+    private void SFTPUpload(string dataPath)
+    {
+        UploadTimer(TimerStauts.Start);
+        // Check File exist
+        if (!File.Exists(dataPath))
+        {
+            SendLog( new SendInfo("Error, there is no save data exists"));
+            return;
+        }
+
+        // Check Connection Info
+        if( _connectionInfo == null)
+        {
+            SendLog(new SendInfo("Connection Info is not set."));
+            return;
+        }
+
+        // Connect
+        using (var sftp = new SftpClient(_connectionInfo))
+        {
+            FileInfo fileInfo = new FileInfo(dataPath);
+            float progress, preProgress = 0;
+            long wroteByte = 0;
+            string uploadFolder = "/ncuwmlab";
+
+            string fileName = Path.GetFileName(dataPath);
+            string gameID = fileName.Split('_')[0];
+            string motionID = fileName.Split('_')[1];
+
+            try
+            {
+                if (!sftp.IsConnected)
+                {
+                    sftp.Connect();
+                }
+            }
+            catch (Exception ex)
+            {
+                SendLog(new SendInfo(string.Format("SFTP 連線失敗，原因：{0}", ex.Message)));
+                return;
+            }
+
+            // Create game folder
+            if (SFTPCreateFolder(sftp, uploadFolder, gameID))
+                uploadFolder = string.Join("/", uploadFolder, gameID);
+            else
+                return;
+
+            // Create user folder
+            if (SFTPCreateFolder(sftp, uploadFolder, motionID))
+                uploadFolder = string.Join("/", uploadFolder, motionID);
+            else
+                return;
+
+            //sftp.CreateDirectory($"/{fileName}");
+            int buffLength = 2048;
+            byte[] fileContents = new byte[buffLength];
+            int contentLen;
+            try
+            {
+                using (FileStream fs = fileInfo.OpenRead())
+                {
+                    using (Stream requestStream = sftp.OpenWrite(uploadFolder + "/" + fileName.Split('_')[2]))
+                    {
+                        contentLen = fs.Read(fileContents, 0, buffLength);
+                        while (contentLen != 0)
+                        {
+                            requestStream.Write(fileContents, 0, contentLen);
+                            wroteByte += fileContents.Length;
+                            progress = (float)wroteByte / (float)fileInfo.Length;
+
+                            // prevent UI slower than update
+                            if (((int)(progress * 100) - preProgress) >= 1)
+                            {
+                                if (progress <= 1f)
+                                    SendLog(new SendInfo(progress));
+                            }
+                            // Next
+                            contentLen = fs.Read(fileContents, 0, buffLength);
+                            preProgress = (int)(progress * 100);
+                            //Debug.Log("Pre Progress : " + preProgress.ToString());
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                SendLog(new SendInfo(UploadTimer(TimerStauts.Fail, fileInfo.Length)));
+                SendLog(new SendInfo("SFTP：" + e.Message));
+                UploadEnd(false, "", dataPath);
+                return;
+            }
+
+            SendLog(new SendInfo(UploadTimer(TimerStauts.Success, fileInfo.Length)));
+            SendLog(new SendInfo("Upload Finish, File : " + dataPath + Environment.NewLine));
+            UploadEnd(true, "Upload Finish", dataPath);
+
+            sftp.Disconnect();
+        }
+    }
+    // ForSend to ForStore -> Next Upload
+    private void UploadEnd( bool isSuccess, string info, string dataPath)
+    {
+        if (isSuccess)
+        {
+            string savePath = dataPath.Replace(LabTools.sendDir, LabTools.saveDir);
+            if( !File.Exists(savePath) )
+            {
+                File.Move(dataPath, savePath);
+            }
+            else
+            {
+                File.Delete(dataPath);
+                SendLog(new SendInfo("Seems data is already upload before. SendData cache deleted."));
+            }
+            SendLog( new SendInfo(1f));
+            //File.Delete(dataPath);
+        }
+
+        // Try to upload next file
+        Upload();
+
+        
+    }
+
+    // Upload time cost
+    private string UploadTimer(TimerStauts status, long filesize = 0)
+    {
+        if (status == TimerStauts.Start)    // Start the timer
+        {
+            sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
+            return "Start Timer";
+        }
+        else if ( status == TimerStauts.Success)  // end timer and output result
+        {
+            sw.Stop();
+            string timerInfo = "Process time: " + sw.ElapsedMilliseconds.ToString() + "ms"
+                + "\tStore size: " + filesize.ToString() + "bytes";
+            sw.Reset();
+            return timerInfo;
+        }
+        else // upload fail, just stop and reset
+        {
+            sw.Stop();
+            sw.Reset();
+            return "Stop Timer";
+        }
+    }
+    // SFTP server Create Folder
+    private bool SFTPCreateFolder( SftpClient sftp, string path, string folderName)
+    {
+        if (!sftp.Exists(path))
+        {
+            //sftp.ChangeDirectory(uploadFolder);
+            SendLog(new SendInfo("SFTP 上傳失敗，找不到對應上傳資料夾"));
+            return false;
+        }
+
+        string newPath = string.Join("/", path, folderName);
+        if ( sftp.Exists(newPath))
+        {
+            return true;
+        }
+        else
+        {
+            try
+            {
+                sftp.CreateDirectory(newPath);
+                return true;
+            }
+            catch( Exception e)
+            {
+                SendLog(new SendInfo("SFTP：" + e.Message));
+                return false;
+            }
+        }
+    }
+
+    // Unity not allow Thread get scene object, 
+    private void SendLog(SendInfo sendInfo)
+    {
+        if( sendInfo.info != "" && LabTools.IsLog)
+           Debug.Log(sendInfo.info);
+        SendDataAction?.Invoke(sendInfo);
+    }
+
+    #endregion
+
+    #region Alpha Code
+
+    // Check this file has proper json end or not
+    private void FileCheck(string dataPath)
+    {
+        string[] lines = File.ReadAllLines(dataPath);
+        if (lines[lines.Length - 1] != LabTools.JsonEnd)
+        {
+            FileStream _fs = new FileStream(dataPath, FileMode.Append, FileAccess.Write);
+            StreamWriter _sw = new StreamWriter(_fs);
+            _sw.Write(Environment.NewLine + LabTools.JsonEnd);
+            _sw.Flush();
+            _fs.Close();
+        }
+    }
+    // FTP IEnumerator
+    IEnumerator FTPRequest(string dataPath)
+    {
+        string fileName = Path.GetFileName(dataPath);
+        yield return null;
+        // Get the object used to communicate with the server.
+        FtpWebRequest request = (FtpWebRequest)WebRequest.Create("ftp://140.115.54.6/upload/" + fileName);
+        request.Method = WebRequestMethods.Ftp.UploadFile;
+        request.Timeout = Timeout.Infinite;
+        request.Credentials = new NetworkCredential("newftpuser", "wmlab57997");
+        request.UseBinary = true;
+        request.KeepAlive = false;
+
+        if (File.Exists(dataPath))
+        {
+            byte[] fileContents;
+            //建立StreamReader物件讀取實體檔案，並轉成byte陣列
+            using (StreamReader sourceStream = new StreamReader(dataPath))
+            {
+                using (Stream requestStream = request.GetRequestStream())
+                {
+                    requestStream.WriteTimeout = Timeout.Infinite;
+                    // 檢查文件中接下來還有沒有內容
+                    while (sourceStream.Peek() >= 0)
+                    {
+                        fileContents = Encoding.UTF8.GetBytes(sourceStream.ReadLine());
+                        request.ContentLength = fileContents.Length;
+                        //將byte陣列寫入Stream資料流
+                        requestStream.Write(fileContents, 0, fileContents.Length);
+                    }
+                }
+            }
+
+            //建立FtpWebResponse物件接收從FTP回應的資料流
+            using (FtpWebResponse response = (FtpWebResponse)request.GetResponse())
+            {
+                //LabTools.Log($"Upload File Complete, status {response.StatusDescription} Status Code : {response.StatusCode}");
+                if (response.StatusDescription.Contains("226"))
+                {
+                    UploadEnd(true, response.StatusDescription, dataPath);
+                }
+                else
+                {
+                    UploadEnd(false, response.StatusDescription, dataPath);
+                }
+            }
+
+        }
+        else
+        {
+            LabTools.Log("Error, there is no save data exists");
+            yield break;
+        }
+    }
+    // FTP Thread
+    private void FTPUpload(string dataPath)
+    {
+        if (File.Exists(dataPath))
+        {
+            FileInfo fileInfo = new FileInfo(dataPath);
+            float progress;
+            long wroteByte = 0;
+
+            string fileName = Path.GetFileName(dataPath);
+            // Get the object used to communicate with the server.
+            FtpWebRequest request = (FtpWebRequest)WebRequest.Create("ftp://140.115.54.6/upload/" + fileName);
+            request.Method = WebRequestMethods.Ftp.UploadFile;
+            request.Timeout = Timeout.Infinite;
+            request.Credentials = new NetworkCredential("newftpuser", "wmlab57997");
+            request.UseBinary = true;
+            request.KeepAlive = false;
+            request.ContentLength = fileInfo.Length;
+
+            int buffLength = 2048;
+            byte[] fileContents = new byte[buffLength];
+            int contentLen;
+            try
+            {
+                using (FileStream fs = fileInfo.OpenRead())
+                {
+                    using (Stream requestStream = request.GetRequestStream())
+                    {
+                        contentLen = fs.Read(fileContents, 0, buffLength);
+                        while (contentLen != 0)
+                        {
+                            requestStream.Write(fileContents, 0, contentLen);
+
+                            wroteByte += fileContents.Length;
+                            progress = (float)wroteByte / (float)fileInfo.Length;
+                            if (progress <= 1f)
+                                SendLog(new SendInfo(progress));
+                            // Next
+                            contentLen = fs.Read(fileContents, 0, buffLength);
+                        }
+                    }
+                }
+
+
+            }
+            catch (Exception e)
+            {
+                SendLog(new SendInfo(e.Message));
+                return;
+            }
+
+            //建立FtpWebResponse物件接收從FTP回應的資料流
+            using (FtpWebResponse response = (FtpWebResponse)request.GetResponse())
+            {
+                SendLog(new SendInfo(UploadTimer(TimerStauts.Success, (int)fileInfo.Length)));
+                SendLog(new SendInfo(response.StatusDescription + "File : " + dataPath + Environment.NewLine));
+                if (response.StatusDescription.Contains("221") || response.StatusDescription.Contains("226"))
+                {
+                    UploadEnd(true, response.StatusDescription, dataPath);
+                }
+                else
+                {
+                    UploadEnd(false, response.StatusDescription, dataPath);
+                }
+            }
+
+        }
+        else
+        {
+            SendLog(new SendInfo("Error, there is no save data exists"));
+            return;
+        }
+    }
+    // HTTP
+    IEnumerator UploadRequest(string dataPath)
+    {
+        byte[] binaryData;
+        //string json = JsonUtility.ToJson(testDatas);
+        //json = "{\"data\":[" + json + "]}";
+        //byte[] binaryData = System.Text.Encoding.UTF8.GetBytes(json);
+        if (File.Exists(dataPath))
+        {
+            //FileCheck(dataPath);
+            binaryData = File.ReadAllBytes(dataPath);
+        }
+        else
+        {
+            LabTools.Log("Error, there is no save data exists");
+            yield break;
+        }
+
+        //LabTools.Log("Data Size: " + binaryData.Length);
+        //LabTools.Log( _labDataConfig.ServerPath);
+        var uwr = new UnityWebRequest(_labDataConfig.ServerPath, "POST");
+        uwr.uploadHandler = (UploadHandler)new UploadHandlerRaw(binaryData);
+        uwr.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
+        //uwr.timeout = 5;
+        uwr.SetRequestHeader("Content-Type", "text/plain");
+        yield return uwr.SendWebRequest();
+
+        LabTools.Log( UploadTimer(TimerStauts.Success, binaryData.Length));
+        if (uwr.result == UnityWebRequest.Result.ConnectionError ||
+            uwr.result == UnityWebRequest.Result.ProtocolError)
+        {
+            //Debug.Log("Error While Sending: " + uwr.error);
+            UploadEnd(false, "Error While Sending: " + uwr.error, dataPath);
+        }
+        else
+        {
+            //Debug.Log("Received: " + uwr.downloadHandler.text);
+            UploadEnd(true, "Received: " + uwr.downloadHandler.text, dataPath);
+        }
+
+        uwr.Dispose();
+
+    }
+
+    #endregion
+
+
+    class SSHGet
+{
+    public string sshkey;
+    public string DeviceId;
+}

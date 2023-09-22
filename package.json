@@ -1,0 +1,17 @@
+{
+    "name": "com.xrlab.labframe2023",
+    "version": "0.0.0",
+    "displayName": "Lab Frame 2023",
+    "description": "NCU WMLABxXRLAB (Lab317/318)\nLab Frame 2023",
+    "unity": "2020.3",
+    "unityRelease": "33f1",
+    "documentationUrl": "",
+    "changelogUrl": "",
+    "licensesUrl": "https://youtu.be/dQw4w9WgXcQ",
+    "author": {
+      "name": "wmlab + xrlab",
+      "email": "me@jcxyis.com",
+      "url": "https://staff.csie.ncu.edu.tw/shihchingyeh/index2.html"
+    }
+  }
+  
