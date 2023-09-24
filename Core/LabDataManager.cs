@@ -61,9 +61,9 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
         // Get Config
         _labDataConfig = LabTools.GetConfig<LabDataConfig>();
 
-        #region 初始化根目錄
-
-        if (_labDataConfig.LocalSavePath != "") // 在 LabDataConfig 中已設定 LocalPath
+        #region 初始化
+        // 初始化根目錄
+        if (!string.IsNullOrEmpty(_labDataConfig.LocalSavePath) ) // 在 LabDataConfig 中已設定 LocalPath
         {
             LabTools.SetDataPath(_labDataConfig.LocalSavePath);
             if( !_labDataConfig.LocalSavePath.Contains(_labDataConfig.GameID))
@@ -90,10 +90,15 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
             _labDataConfig.LocalSavePath = LabTools.DataPath;
             SetConfig();
         }
+        // Init GameID
+        if(string.IsNullOrEmpty(_labDataConfig.GameID))
+        {
+            _labDataConfig.GameID = Application.productName;
+            SetConfig();
+        }
+        #endregion 
 
-        #endregion
-
-        // (PC) Not for mobile platform
+        // (PC)
         Application.wantsToQuit += () => !IsClientRunning;
 
         GameData = new LabGameData();
@@ -218,7 +223,7 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
         // }
         if( Config.GameID == "")
         {
-            LabTools.LogError("Config [GameID] can not be empty.");            
+            LabTools.LogError("Config [GameID] can not be empty. 請檢查 LabDataConfig 的 GameID 是否正確。");            
             Application.Quit(404);
             return;
         }

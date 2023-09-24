@@ -41,8 +41,9 @@ namespace LabFrame2023
         static LabTools()
         {
 #if UNITY_EDITOR
-            // Assets/Config  
-            ConfigPath = Path.Combine(Application.dataPath, "_"+CONFIG_DIR);
+            // Assets/Resources/Config  
+            // 後續遊戲 build 出來後會以此為範本去複製
+            ConfigPath = Path.Combine(Application.dataPath, "Resources", CONFIG_DIR);
 #elif UNITY_STANDALONE_WIN
             // {遊戲資料夾}/Config
             ConfigPath = Path.Combine(Application.dataPath, CONFIG_DIR);
@@ -95,8 +96,7 @@ namespace LabFrame2023
                     Directory.CreateDirectory(tempPath);
                     return tempPath;
                 }
-
-                Log("Folder Has Existed!");
+                // Log("Folder Has Existed!");
                 return folderName;
             }
             else
@@ -258,7 +258,7 @@ namespace LabFrame2023
         /// 取得對應 Config 檔設定資料
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="isNew">設定 true 可以刪掉設定檔</param>
+        /// <param name="isNew">設定 true 可以刪掉設定檔，重建一個乾淨的</param>
         /// <param name="filePath"></param>
         /// <returns></returns>
         public static T GetConfig<T>(bool isNew = false) where T : class, new()
@@ -274,10 +274,23 @@ namespace LabFrame2023
             {
                 File.Delete(path);
             }
-            if (!File.Exists(path))
+            
+            if (!File.Exists(path)) // 找不到 config 檔
             {
-                Log("No " + typeof(T).Name + " example config, create default one.");
-                WriteConfig(new T());
+                // 從 Resources 找個範例檔案
+                var file = Resources.Load<TextAsset>("Config/"+typeof(T).Name);
+                T t;
+                if(file == null)
+                {
+                    Log($"未找到{typeof(T).Name} 的設定檔，並且也沒在 Resources/{typeof(T).Name} 找到範例，已建立一個全新的設定檔。請記得前往設定內容。");
+                    t = new T();
+                }
+                else
+                {
+                    Log($"未找到{typeof(T).Name} 的設定檔，而在 Resources 找到範例，已依此建立設定檔。");
+                    t = JsonUtility.FromJson<T>(file.text);
+                }
+                WriteConfig(t);
             }
 
             StreamReader sr = new StreamReader(path);
