@@ -34,7 +34,7 @@ namespace LabFrame2023
         /// 可為空，空值代表預設位置 (依平台不同)
         /// 注意：修改此值可能導致無法上傳資料
         /// </summary>
-        public string LocalSavePathOverride;
+        public string LocalSavePath;
         /// <summary>
         /// 儲存檔案時，資料夾的 Timestamp 命名格式
         /// </summary>
@@ -52,7 +52,7 @@ namespace LabFrame2023
             SerialID = 0;
             GameMode = "";
 
-            LocalSavePathOverride = "";
+            LocalSavePath = "";
             LocalSaveDataTimeLayout = "yyyyMMddHH";
         }
     }

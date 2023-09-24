@@ -10,5 +10,9 @@ namespace LabFrame2023.AIOT
         /// AIOT 伺服器 IP
         /// </summary>
         public string ServerUrl = "http://ncuaiot-dev.ap-northeast-1.elasticbeanstalk.com/";
+        /// <summary>
+        /// AIOT Platform 的安裝包名稱 (Android)
+        /// </summary>
+        public string AIOTPlatformPackageName = "com.NCUVRLAB.NCUAIOT";
     }
 }

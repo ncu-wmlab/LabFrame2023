@@ -63,10 +63,10 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
 
         #region 初始化根目錄
 
-        if (_labDataConfig.LocalSavePathOverride != "") // 在 LabDataConfig 中已設定 LocalPath
+        if (_labDataConfig.LocalSavePath != "") // 在 LabDataConfig 中已設定 LocalPath
         {
-            LabTools.SetDataPath(_labDataConfig.LocalSavePathOverride);
-            if( !_labDataConfig.LocalSavePathOverride.Contains(_labDataConfig.GameID))
+            LabTools.SetDataPath(_labDataConfig.LocalSavePath);
+            if( !_labDataConfig.LocalSavePath.Contains(_labDataConfig.GameID))
                 LabTools.SetDataPath(Path.Combine(LabTools.DataPath, _labDataConfig.GameID));
         }
         else
@@ -83,11 +83,11 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
             // Android: /storage/emulated/0/LabData/{GameID}
             LabTools.SetDataPath(Path.Combine("/storage/emulated/0/LabData/", _labDataConfig.GameID));
 #else
-            // Other Platform: {Application.persistentDataPath}/{GameID}
-            LabTools.DataPath = Application.persistentDataPath;
+            // Other Platform: {Application.persistentDataPath}/LabData/{GameID}
+            LabTools.SetDataPath(Path.Combine(Application.persistentDataPath, "LabData", _labDataConfig.GameID));
             LabTools.LogWarning($"Non-tested Platform detected!  LabDataPath={LabTools.DataPath}");
 #endif
-            _labDataConfig.LocalSavePathOverride = LabTools.DataPath;
+            _labDataConfig.LocalSavePath = LabTools.DataPath;
             SetConfig();
         }
 
@@ -112,7 +112,7 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
         {
             if (_quittingPanel == null)
             {
-                Transform container = GameObject.FindGameObjectWithTag(LabTools.MainCanvas)?.transform;
+                Transform container = GameObject.FindGameObjectWithTag(LabTools.MAIN_CANVAS)?.transform;
                 container = container ?? FindObjectOfType<Canvas>()?.transform;
                 container = container ?? transform.root;
                 _quittingPanel = Instantiate<QuittingPanel>(quitPrefab, container);
@@ -140,7 +140,7 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
             item.Value.WriterDispose();
         }
         // Clear ForSend
-        LabTools.DeleteAllEmptyDir( LabTools.sendDir);
+        LabTools.DeleteAllEmptyDir( LabTools.FOR_SEND_DIR);
 
         // Clear Data
         GameData = null;
@@ -219,7 +219,7 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
         if( Config.GameID == "")
         {
             LabTools.LogError("Config [GameID] can not be empty.");            
-            Application.Quit();
+            Application.Quit(404);
             return;
         }
 
@@ -240,7 +240,7 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
 
         #region 初始化本地存檔 ForStore
         // Create folder ForStore
-        _saveDataPath = Path.Combine( LabTools.DataPath, LabTools.saveDir);
+        _saveDataPath = Path.Combine( LabTools.DataPath, LabTools.FOR_STORE_DIR);
         LabTools.CreateSaveDataFolder(_saveDataPath);
         // Create folder for file
         _saveDataPath = Path.Combine( _saveDataPath, _saveID);
@@ -249,7 +249,7 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
 
         #region 初始化上傳功能 ForSend
         // Create folder ForSend
-        _sendDataPath = Path.Combine( LabTools.DataPath, LabTools.sendDir);
+        _sendDataPath = Path.Combine( LabTools.DataPath, LabTools.FOR_SEND_DIR);
         LabTools.CreateSaveDataFolder(_sendDataPath);
         // Create folder for file
         _sendDataPath = Path.Combine(_sendDataPath, _saveID);
@@ -282,8 +282,8 @@ public class LabDataManager : Singleton<LabDataManager>, IManager
 
         switch(dir)
         {
-            case DataDir.ForSend:  path = LabTools.sendDir; break;
-            case DataDir.ForStore: path = LabTools.saveDir; break;
+            case DataDir.ForSend:  path = LabTools.FOR_SEND_DIR; break;
+            case DataDir.ForStore: path = LabTools.FOR_STORE_DIR; break;
             // case DataDir.Both:     path = ""; break;
             default:               path = ""; break;
         }

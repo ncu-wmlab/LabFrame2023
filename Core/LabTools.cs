@@ -8,36 +8,60 @@ namespace LabFrame2023
 {
     public class LabTools
     {
-        // Frame Define
-        public const string configDir = "Config";
-        public const string saveDir = "ForStore";
-        public const string sendDir = "ForSend";
-        public const string JsonPrefix = "{ \"data\" : [ ";
-        public const string Test = "!Test";
-        public const string JsonEnd = " ] }";
-        public const string MainCanvas = "MainCanvas";
+        // Frame Default path
+        public const string CONFIG_DIR = "Config";
+        public const string FOR_STORE_DIR = "ForStore";
+        public const string FOR_SEND_DIR = "ForSend";
+        // public const string JsonPrefix = "{ \"data\" : [ ";
+        // public const string Test = "!Test";
+        // public const string JsonEnd = " ] }";
+        public const string MAIN_CANVAS = "MainCanvas";
 
         /// <summary>
         /// 設定檔存放路徑
         /// </summary>
-        public static string ConfigPath = Application.persistentDataPath;
+        public static string ConfigPath { get; private set; }
         /// <summary>
         /// 資料存放路徑
+        /// 依平台不同 (由 LabDataManager 設定)
         /// </summary>
-        public static string DataPath = "LabData";
+        public static string DataPath { get; private set; }
         /// <summary>
         /// 可開關是否 Log
         /// </summary>
-        public static bool IsLog = true;
+        public static bool IsLog { get; private set; } = true;
         /// <summary>
         /// 框架輸出 Log
         /// </summary>
         public static Action<string> LogAction;
 
-        public static T GetData<T>(LabDataBase data) where T : LabDataBase
+
+        #region Static Constructor
+
+        static LabTools()
         {
-            return data is T @base ? @base : null;
+#if UNITY_EDITOR
+            // Assets/Config  
+            ConfigPath = Path.Combine(Application.dataPath, "_"+CONFIG_DIR);
+#elif UNITY_STANDALONE_WIN
+            // {遊戲資料夾}/Config
+            ConfigPath = Path.Combine(Application.dataPath, CONFIG_DIR);
+#elif UNITY_ANDROID
+            // {Application.persistentDataPath}/Config
+            ConfigPath = Path.Combine(Application.persistentDataPath, CONFIG_DIR);
+#else
+            ConfigPath = Path.Combine(Application.persistentDataPath, CONFIG_DIR);
+            Debug.Log("Untested platform, use default path: " + ConfigPath");
+#endif
         }
+
+        #endregion
+
+
+        // public static T GetData<T>(LabDataBase data) where T : LabDataBase
+        // {
+        //     return data is T @base ? @base : null;
+        // }
 
 
 
@@ -56,18 +80,6 @@ namespace LabFrame2023
             }
         }
 
-        /// <summary>
-        /// 創建檔案資料夾（以資料類型命名）
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        public static void CreateDataFolder<T>(string filePath = configDir) where T : LabDataBase
-        {
-            var path = Path.Combine( DataPath, filePath, typeof(T).Name);
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
-        }
         /// <summary>
         /// 創建檔案資料夾，isNew 可以同名不同時間點創建
         /// </summary>
@@ -249,9 +261,9 @@ namespace LabFrame2023
         /// <param name="isNew">設定 true 可以刪掉設定檔</param>
         /// <param name="filePath"></param>
         /// <returns></returns>
-        public static T GetConfig<T>(bool isNew = false, string filePath = configDir) where T : class, new()
+        public static T GetConfig<T>(bool isNew = false) where T : class, new()
         {
-            var path = Path.Combine( ConfigPath, filePath);
+            var path = ConfigPath;
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
@@ -264,22 +276,8 @@ namespace LabFrame2023
             }
             if (!File.Exists(path))
             {
-                string json;
-                var file = Resources.Load<TextAsset>(typeof(T).Name);
-                if( file != null )
-                {
-                    json = file.text;
-                }
-                else
-                {
-                    Log("No " + typeof(T).Name + " example config, create default one.");
-                    json = JsonUtility.ToJson(new T());
-                }
-
-                FileStream fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                StreamWriter sw = new StreamWriter(fs);
-                sw.Write(json);
-                sw.Close();
+                Log("No " + typeof(T).Name + " example config, create default one.");
+                WriteConfig(new T());
             }
 
             StreamReader sr = new StreamReader(path);
@@ -292,12 +290,10 @@ namespace LabFrame2023
         /// 檢查本地是否儲存過 Config 檔
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="isNew"></param>
-        /// <param name="filePath"></param>
         /// <returns></returns>
-        public static bool CheckConfig<T>(string filePath = configDir) where T : class
+        public static bool CheckConfig<T>() where T : class
         {
-            var path = Path.Combine( ConfigPath, filePath, typeof(T).Name + ".json");
+            var path = Path.Combine( ConfigPath, typeof(T).Name + ".json");
             if (File.Exists(path))
             {
                 return true;
@@ -314,19 +310,19 @@ namespace LabFrame2023
         /// <param name="dataName"></param>
         /// <param name="isOverWrite"></param>
         /// <returns></returns>
-        public static void WriteConfig<T>(T t, bool isOverWrite = false, string filePath = configDir) where T : class, new()
+        public static void WriteConfig<T>(T t, bool isOverWrite = false) where T : class, new()
         {
             // 檢查資料夾
-            var path = Path.Combine(ConfigPath, filePath);
+            var path = ConfigPath;
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
             }
 
             path = Path.Combine( path, typeof(T).Name + ".json");
+            var json = JsonUtility.ToJson(t, true);
             if (!File.Exists(path))
             {
-                var json = JsonUtility.ToJson(t);
                 var fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite);
                 StreamWriter sw = new StreamWriter(fs);
                 sw.Write(json);
@@ -334,7 +330,6 @@ namespace LabFrame2023
             }
             else if (File.Exists(path) && isOverWrite)
             {
-                var json = JsonUtility.ToJson(t);
                 var fs = new FileStream(path, FileMode.Truncate, FileAccess.ReadWrite);
                 fs.Close();
                 fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite);
