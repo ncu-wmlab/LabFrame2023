@@ -14,10 +14,6 @@ using LabFrame2023;
 public class LabDataManager : LabSingleton<LabDataManager>, IManager
 {
     /// <summary>
-    /// LabData Config 設定
-    /// </summary>
-    public LabDataConfig Config { get { return _labDataConfig; } private set { _labDataConfig = value; } }
-    /// <summary>
     /// 遊戲運行資料，可自由呼叫
     /// </summary>
     public LabGameData GameData;
@@ -41,8 +37,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     // LabData Init
     private bool _isClientInit = false;
     // File ID
-    private string _userID = "";
-    private string _saveID = "";
+    private string _fileName = "";
     private string _saveDataPath = "";
     private string _sendDataPath = "";
 
@@ -62,12 +57,19 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         _labDataConfig = LabTools.GetConfig<LabDataConfig>();
 
         #region 初始化
+        // Init GameID
+        if(string.IsNullOrEmpty(_labDataConfig.GameID))
+        {
+            _labDataConfig.GameID = Application.productName;
+            Debug.Log($"已自動指定 GameID={_labDataConfig.GameID}");
+        }
         // 初始化根目錄
         if (!string.IsNullOrEmpty(_labDataConfig.LocalSavePath) ) // 在 LabDataConfig 中已設定 LocalPath
         {
             LabTools.SetDataPath(_labDataConfig.LocalSavePath);
             if( !_labDataConfig.LocalSavePath.Contains(_labDataConfig.GameID))
                 LabTools.SetDataPath(Path.Combine(LabTools.DataPath, _labDataConfig.GameID));
+            Debug.Log("已手動指定 DataPath="+LabTools.DataPath);
         }
         else
         {
@@ -88,14 +90,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             LabTools.LogWarning($"Non-tested Platform detected!  LabDataPath={LabTools.DataPath}");
 #endif
             _labDataConfig.LocalSavePath = LabTools.DataPath;
-            SetConfig();
-        }
-        // Init GameID
-        if(string.IsNullOrEmpty(_labDataConfig.GameID))
-        {
-            _labDataConfig.GameID = Application.productName;
-            SetConfig();
-        }
+        }        
         #endregion 
 
         // (PC)
@@ -149,7 +144,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 
         // Clear Data
         GameData = null;
-        _userID = _saveID = "";
+        _fileName = "";
         WriteDataAction = null;
         SendDataAction = null;
 
@@ -182,73 +177,45 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     #region Public Method
 
     /// <summary>
-    /// 回傳目前 ID，無則自動產生新 ID
-    /// </summary>
-    public string GetUserID()
-    {
-        // return ID
-        if (_userID != "") return _userID;
-
-        // Get new ID
-        // _labDataConfig.SerialID++;
-        // SetConfig();
-
-        // FileID = GameID_LocID_UserID(_GameMode)
-        _userID = string.Join("_", 
-            _labDataConfig.GameID, 
-            _labDataConfig.LocID,
-            _labDataConfig.SerialID.ToString().PadLeft(3, '0')            
-        );
-        if(string.IsNullOrEmpty(_labDataConfig.GameMode))
-        {
-            _userID = string.Join("_", _userID, _labDataConfig.GameMode);
-        }
-
-        return _userID;
-    }
-
-    /// <summary>
     /// 導入 UserID，初始化上傳功能
     /// </summary>
     /// <param name="userID"></param>
     public void LabDataInit(string userID)
     {
-        if (_isClientInit) return;
-
-        // Check LabDataConfig
-        // if( Config.ServerPath == "")
-        // {
-        //     LabTools.LogError("Config [ServerPath] can not be empty.");
-        //     return;
-        // }
-        if( Config.GameID == "")
-        {
-            LabTools.LogError("Config [GameID] can not be empty. 請檢查 LabDataConfig 的 GameID 是否正確。");            
-            Application.Quit(404);
+        if (_isClientInit) 
             return;
-        }
 
-        // Set MotionID
-        if ( string.IsNullOrEmpty(userID) )
+        #region 驗證參數        
+        if (string.IsNullOrEmpty(userID) )
         {
-            LabTools.Log("[UserID] is empty. Data would only save to local.");
-            // Config.SendToServer = false;
-
-            _userID = GetUserID();
-            _saveID = string.Join("_", DateTime.Now.ToString(_labDataConfig.LocalSaveDataTimeLayout), _userID);
+            throw new ArgumentNullException("userID", "UserID can not be empty.");
         }
-        else
+        if(Path.GetInvalidFileNameChars().Any(userID.Contains))
         {
-            _userID = userID;
-            _saveID = _userID;
-        }           
+            throw new ArgumentException("UserID contains invalid characters.", "userID");
+        }
+        #endregion
 
+        #region File Name        
+        _fileName = string.Join("_", 
+            _labDataConfig.BucketID,
+            _labDataConfig.GameID, 
+            string.IsNullOrWhiteSpace(_labDataConfig.MotionDataID) ? 
+                DateTime.Now.ToString(_labDataConfig.LocalSaveDataTimeLayout) : 
+                _labDataConfig.MotionDataID //.PadLeft(3, '0')            
+        );
+        if(!string.IsNullOrEmpty(_labDataConfig.GameMode))
+        {
+            _fileName = string.Join("_", _fileName, _labDataConfig.GameMode);
+        }
+        #endregion
+          
         #region 初始化本地存檔 ForStore
         // Create folder ForStore
         _saveDataPath = Path.Combine( LabTools.DataPath, LabTools.FOR_STORE_DIR);
         LabTools.CreateSaveDataFolder(_saveDataPath);
         // Create folder for file
-        _saveDataPath = Path.Combine( _saveDataPath, _saveID);
+        _saveDataPath = Path.Combine( _saveDataPath, userID);
         _saveDataPath = LabTools.CreateSaveDataFolder(_saveDataPath);
         #endregion
 
@@ -257,7 +224,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         _sendDataPath = Path.Combine( LabTools.DataPath, LabTools.FOR_SEND_DIR);
         LabTools.CreateSaveDataFolder(_sendDataPath);
         // Create folder for file
-        _sendDataPath = Path.Combine(_sendDataPath, _saveID);
+        _sendDataPath = Path.Combine(_sendDataPath, userID);
         _sendDataPath = LabTools.CreateSaveDataFolder(_sendDataPath);
         #endregion
 
@@ -306,14 +273,6 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     }
 
     /// <summary>
-    /// 修改 LabData Config
-    /// </summary>
-    public void SetConfig()
-    {
-        LabTools.WriteConfig(_labDataConfig, true);
-    }
-
-    /// <summary>
     /// 還原 LabData Config 
     /// </summary>
     public void ResetConfig()
@@ -348,14 +307,13 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             LabTools.Log("LabData 尚未初始化");
             return;
         }
-
         DataWriterFunc(data);
     }
     private void DataWriterFunc(LabDataBase data)
     {
         var datatype = data.GetType();
         // string filePath = Config.SendToServer ? _sendDataPath : _saveDataPath;
-        string filePath = _saveDataPath;
+        string filePath = _sendDataPath;  // FIXME　讓使用者選擇要不要上傳？
         // First time 
         if (!_dataWriterDic.ContainsKey(datatype))
         {
@@ -369,12 +327,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     {
         // Create data file
         // SaveFileName = GameID_MotionID_DataType.json
-        string dataName = string.Join("_", 
-            _labDataConfig.GameID ,
-            _userID,
-            data.GetType().Name + ".json"
-        );
-        string path = Path.Combine(dataPath, dataName);
+        string path = Path.Combine(dataPath, $"{_fileName}_{data.GetType().Name}.json");
         LabTools.CreateData(path);
 
         LabDataWriter _LW = new LabDataWriter(path);

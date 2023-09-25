@@ -7,24 +7,21 @@ namespace LabFrame2023
     public class LabDataConfig
     {
         // public bool SendToServer;
-        public bool IsTest;
+        public bool IsTest;        
         /// <summary>
-        /// (Optional) 資料庫 IP 位址
-        /// 如果沒有用到上傳服務，則不需要設定
-        /// </summary>
-        // public string ServerPath;            
-        /// <summary>
-        /// 遊戲 ID ，用以建立資料庫根資料夾
+        /// (Optional) 遊戲 ID ，用以建立資料庫根資料夾
+        /// 填空值表示使用遊戲名稱 (PlayerSettings.ProductName)
         /// </summary>
         public string GameID;
         /// <summary>
-        /// (Optional) 地點 ID
+        /// (Optional) AIOT 儲存貯體名稱
         /// </summary>
-        public string LocID;        
+        public string BucketID;        
         /// <summary>
-        /// 資料序列號，一般從 0 開始，用以定義 UserID
+        /// (Optional) 資料序列號，留空則會使用時間作為序列號
+        /// 使用 AIOT 時會覆蓋此處設定
         /// </summary>
-        public int SerialID;
+        public string MotionDataID;
         /// <summary>
         /// （Optional）遊戲模式
         /// </summary>
@@ -48,12 +45,12 @@ namespace LabFrame2023
             // ServerPath = "";            
 
             GameID = "";
-            LocID = "";
-            SerialID = 0;
+            BucketID = "";
+            MotionDataID = "";
             GameMode = "";
 
             LocalSavePath = "";
-            LocalSaveDataTimeLayout = "yyyyMMddHH";
+            LocalSaveDataTimeLayout = "yyyyMMddHHmmss";
         }
     }
 }

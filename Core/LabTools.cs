@@ -323,7 +323,7 @@ namespace LabFrame2023
         /// <param name="dataName"></param>
         /// <param name="isOverWrite"></param>
         /// <returns></returns>
-        public static void WriteConfig<T>(T t, bool isOverWrite = false) where T : class, new()
+        protected static void WriteConfig<T>(T t, bool isOverWrite = false) where T : class, new()
         {
             // 檢查資料夾
             var path = ConfigPath;

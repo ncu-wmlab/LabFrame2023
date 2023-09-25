@@ -6,12 +6,10 @@ namespace LabFrame2023
     public class LabDataBase
     {
         public string Timestamp;
-        public string DataID;
         
         public LabDataBase()
         {
             Timestamp = DateTimeOffset.Now.ToString("o");
-            DataID = LabDataManager.Instance.GetUserID();
         }
     }
 }
