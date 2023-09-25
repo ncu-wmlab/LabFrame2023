@@ -3,27 +3,33 @@ using UnityEngine;
 
 namespace LabFrame2023
 {
-    public abstract class Singleton<T> : MonoBehaviour where T : Singleton<T>
+    public abstract class LabSingleton<T> : MonoBehaviour where T : LabSingleton<T>
     {
+        protected static LabApplication m_labApplicationInstance;
         private static T m_Instance;
 
         public static T Instance
         {
             get
             {
-                if (object.ReferenceEquals(Singleton<T>.m_Instance, null))
+                if (object.ReferenceEquals(LabSingleton<T>.m_Instance, null))
                 {
-                    Singleton<T>.m_Instance = (UnityEngine.Object.FindObjectOfType(typeof(T)) as T);
-                    if (object.ReferenceEquals(Singleton<T>.m_Instance, null))
+                    // find from scene                    
+                    LabSingleton<T>.m_Instance = (UnityEngine.Object.FindObjectOfType(typeof(T)) as T);
+                    if (object.ReferenceEquals(LabSingleton<T>.m_Instance, null))
                     {
-                        Debug.LogWarning("cant find a gameobject of instance " + typeof(T) + "!");
-                    }
-                    else
-                    {
-                        Singleton<T>.m_Instance.OnAwake();
+                        // load LabFrame from Resources
+                        if(object.ReferenceEquals(LabSingleton<T>.m_labApplicationInstance, null))
+                        {
+                            Debug.Log("Init LabFrame from Resources");
+                            var g = Instantiate(Resources.Load<GameObject>("LabFrame"));
+                            m_Instance = g.GetComponentInChildren<T>();
+                        }
+                        if(object.ReferenceEquals(LabSingleton<T>.m_Instance, null))
+                            Debug.LogError("Cannot find a gameobject of instance " + typeof(T).Name + "!");
                     }
                 }
-                return Singleton<T>.m_Instance;
+                return LabSingleton<T>.m_Instance;
             }
         }
 
@@ -31,26 +37,35 @@ namespace LabFrame2023
         {
             get
             {
-                return !object.ReferenceEquals(Singleton<T>.m_Instance, null);
+                return !object.ReferenceEquals(LabSingleton<T>.m_Instance, null);
             }
         }
 
         private void Awake()
         {
-            if (object.ReferenceEquals(Singleton<T>.m_Instance, null))
+            // Current No Instance
+            if (object.ReferenceEquals(LabSingleton<T>.m_Instance, null))
             {
-                Singleton<T>.m_Instance = (this as T);
-                Singleton<T>.m_Instance.OnAwake();
+                LabSingleton<T>.m_Instance = (this as T);
             }
-        }
-
-        protected virtual void OnAwake()
-        {
+            else
+            {
+                if(m_Instance)
+                {
+                    Debug.Log($"An instance of {typeof(T)} already exists. Destroying new one.");
+                    Destroy(gameObject);
+                }
+                else
+                {
+                    Debug.LogError($"An instance of {typeof(T)} already exists. However it is null. Please ensure that the instance shall not be destroyed.");
+                    LabSingleton<T>.m_Instance = (this as T);
+                }
+            }
         }
 
         protected virtual void OnApplicationQuit()
         {
-            Singleton<T>.m_Instance = (T)((object)null);
+            LabSingleton<T>.m_Instance = (T)((object)null);
         }
 
         protected virtual void DoOnDestroy()
@@ -60,9 +75,9 @@ namespace LabFrame2023
         private void OnDestroy()
         {
             this.DoOnDestroy();
-            if (object.ReferenceEquals(Singleton<T>.m_Instance, this))
+            if (object.ReferenceEquals(LabSingleton<T>.m_Instance, this))
             {
-                Singleton<T>.m_Instance = (T)((object)null);
+                LabSingleton<T>.m_Instance = (T)((object)null);
             }
         }
     }

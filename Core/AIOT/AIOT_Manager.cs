@@ -5,7 +5,7 @@ using System;
 
 namespace LabFrame2023.AIOT
 {
-    public class AIOT_Manager : Singleton<AIOT_Manager>, IManager
+    public class AIOT_Manager : LabSingleton<AIOT_Manager>, IManager
     {
         protected AIOT_Config _config = null; 
         protected AIOT_GameParams _gameParams = null;

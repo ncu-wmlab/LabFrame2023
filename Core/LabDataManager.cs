@@ -11,7 +11,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using LabFrame2023;
 
-public class LabDataManager : Singleton<LabDataManager>, IManager
+public class LabDataManager : LabSingleton<LabDataManager>, IManager
 {
     /// <summary>
     /// LabData Config 設定

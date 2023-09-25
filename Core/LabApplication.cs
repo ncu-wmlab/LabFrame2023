@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEngine;
 using LabFrame2023;
 
-public class LabApplication : Singleton<LabApplication>
+public class LabApplication : LabSingleton<LabApplication>
 {
     public enum DisposeOptions
     {
@@ -25,6 +25,12 @@ public class LabApplication : Singleton<LabApplication>
 
     private void Awake()
     {
+        if(IsInstanceValid) // Already has an instance, destroy this one
+        {
+            Destroy(gameObject);
+            return;
+        }
+        m_labApplicationInstance = this;
         DontDestroyOnLoad(this);
         ApplicationInit();
     }
@@ -81,10 +87,10 @@ public class LabApplication : Singleton<LabApplication>
 
     // Ensure the game dispose before quit
     // NOTE: Will NOT work if android tap out
-    protected override void OnApplicationQuit()
+    protected void OnApplicationQuit()
     {
         ApplicationDispose();
-        base.OnApplicationQuit();
+        // base.OnApplicationQuit();
     }
     
     /// <summary>
