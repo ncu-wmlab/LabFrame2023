@@ -64,11 +64,21 @@ namespace LabFrame2023.AIOT
 
         public IEnumerator ManagerDispose()
         {
-            // 跳回 AIOT Platform
+            _config = null;
+            _gameParams = null;
+            yield break;
+        }
+
+        /// <summary>
+        /// Callback sent to all game objects before the application is quit.
+        /// </summary>
+        protected override void OnApplicationQuit()
+        {
+            base.OnApplicationQuit();
 #if UNITY_ANDROID
+            // 跳回 AIOT Platform App
             AndroidHelper.OpenApk(_config.AIOTPlatformPackageName);
 #endif
-            yield return 0;
         }
     }
 }

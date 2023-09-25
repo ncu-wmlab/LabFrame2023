@@ -3,8 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Net;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -108,28 +106,22 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     IEnumerator IManager.ManagerDispose()
     {
         // Quit UI
-        try
+        
+        if (_quittingPanel == null)
         {
-            if (_quittingPanel == null)
-            {
-                Transform container = GameObject.FindGameObjectWithTag(LabTools.MAIN_CANVAS)?.transform;
-                container = container ?? FindObjectOfType<Canvas>()?.transform;
-                container = container ?? transform.root;
-                _quittingPanel = Instantiate<QuittingPanel>(quitPrefab, container);
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"Error when instantiating quitting panel: {e}");
+            Transform container = null;
+            try{ container = GameObject.FindGameObjectWithTag(LabTools.MAIN_CANVAS)?.transform; }catch{}
+            container ??= FindObjectOfType<Canvas>()?.transform;
+            container ??= transform.root;
+            _quittingPanel = Instantiate<QuittingPanel>(quitPrefab, container);           
         }
         
-
         // wait for Writer finish
         _quittingPanel?.gameObject.SetActive(true);
         while (_dataQueue.Count > 0 )
         {
             LabTools.Log("Remain " + _dataQueue.Count + " Data to be stored.");
-            _quittingPanel.UpdateInfo(_dataQueue.Count.ToString());
+            _quittingPanel?.UpdateInfo(_dataQueue.Count.ToString());
             yield return new WaitForSeconds(1.0f);
         }
         _quittingPanel?.gameObject.SetActive(false);

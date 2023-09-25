@@ -18,11 +18,6 @@ public class LabApplication : LabSingleton<LabApplication>
     /// </summary>
     private List<IManager> _managers;
 
-    private ApplicationConfig _applicationConfig;
-    public ApplicationConfig Config { get { return _applicationConfig; } private set { _applicationConfig = value; } }
-    public Action RestartAction;
-
-
     private void Awake()
     {
         if(IsInstanceValid) // Already has an instance, destroy this one
@@ -40,8 +35,6 @@ public class LabApplication : LabSingleton<LabApplication>
     /// </summary>
     private void ApplicationInit()
     {
-        _applicationConfig = LabTools.GetConfig<ApplicationConfig>();
-
         _managers = FindObjectsOfType<MonoBehaviour>().OfType<IManager>().ToList();
         _managers.ForEach(p =>
         {
@@ -54,11 +47,11 @@ public class LabApplication : LabSingleton<LabApplication>
     /// </summary>
     private void ApplicationDispose(DisposeOptions options = DisposeOptions.Quit)
     {
-        StartCoroutine(ApplicationDisposeEnumerator(options));
+        StartCoroutine(ApplicationDisposeAsync(options));
     }
-    private IEnumerator ApplicationDisposeEnumerator(DisposeOptions options = DisposeOptions.Quit)
+    private IEnumerator ApplicationDisposeAsync(DisposeOptions options = DisposeOptions.Quit)
     {
-        if (_managers.Count <= 0)
+        if (_managers.Count == 0)
         {
             yield break;
         }
@@ -74,7 +67,6 @@ public class LabApplication : LabSingleton<LabApplication>
             case DisposeOptions.Restart:
                 ApplicationInit();
                 yield return null;
-                RestartAction?.Invoke();
                 break;
             case DisposeOptions.Quit:
                 Application.Quit();
@@ -85,20 +77,22 @@ public class LabApplication : LabSingleton<LabApplication>
         yield return null;
     }
 
-    // Ensure the game dispose before quit
-    // NOTE: Will NOT work if android tap out
-    protected void OnApplicationQuit()
+    // Ensure all IManagers has disposed before quit.
+    // NOTE: 有些平台不會叫此 function！
+    // e.g. android 滑掉 app 、iOS 要設定 exitOnSuspend、WEBGL 完全沒辦法、或是 OS 強制殺掉 app
+    protected override void OnApplicationQuit()
     {
+        base.OnApplicationQuit();
         ApplicationDispose();
-        // base.OnApplicationQuit();
     }
     
     /// <summary>
-    /// 框架重啟
+    /// 框架重啟。
+    /// 如果遊戲有「不離開遊戲而重新開始」需求時，請於重開時呼叫此 function。
     /// </summary>
     public void AppRestart()
     {
-        LabTools.Log("Restarting ... ");
+        LabTools.Log("LabFrame Restarting... ");
         ApplicationDispose(DisposeOptions.Restart);
     }
 }
