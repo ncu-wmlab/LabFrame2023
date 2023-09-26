@@ -45,10 +45,6 @@ public class LabApplication : LabSingleton<LabApplication>
     /// <summary>
     /// 退出遊戲
     /// </summary>
-    private void ApplicationDispose(DisposeOptions options = DisposeOptions.Quit)
-    {
-        StartCoroutine(ApplicationDisposeAsync(options));
-    }
     private IEnumerator ApplicationDisposeAsync(DisposeOptions options = DisposeOptions.Quit)
     {
         if (_managers.Count == 0)
@@ -83,17 +79,27 @@ public class LabApplication : LabSingleton<LabApplication>
     protected override void OnApplicationQuit()
     {
         base.OnApplicationQuit();
-        ApplicationDispose();
+        ApplicationDisposeAsync();
     }
     
     /// <summary>
     /// 框架重啟。
     /// 如果遊戲有「不離開遊戲而重新開始」需求時，請於重開時呼叫此 function。
     /// </summary>
+    [Obsolete("Use AppRestartAsync() instead")]
     public void AppRestart()
     {
+        AppRestartAsync();
+    }
+
+    /// <summary>
+    /// 框架重啟。
+    /// 如果遊戲有「不離開遊戲而重新開始」需求時，請於重開時呼叫此 function。
+    /// </summary>
+    public IEnumerator AppRestartAsync()
+    {
         LabTools.Log("LabFrame Restarting... ");
-        ApplicationDispose(DisposeOptions.Restart);
+        yield return ApplicationDisposeAsync(DisposeOptions.Restart);
     }
 }
 

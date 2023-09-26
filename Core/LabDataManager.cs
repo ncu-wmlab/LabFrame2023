@@ -32,8 +32,10 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 
     // LabData Config
     private LabDataConfig _labDataConfig;
+
     // LabData Init
     private bool _isClientInit = false;
+
     // File ID
     private string _fileName = "";
     private string _saveDataPath = "";
@@ -44,7 +46,6 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     private Thread _writeThread;
     private Dictionary<Type, LabDataWriter> _dataWriterDic;
     
-
     // UI
     [SerializeField] private QuittingPanel quitPrefab;
     private QuittingPanel _quittingPanel;
@@ -71,7 +72,6 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         }
         else
         {
-
 #if UNITY_STANDALONE_WIN
             // Windows: {Documents}/LabData/{GameID}
             LabTools.SetDataPath(Path.Combine(
@@ -85,7 +85,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 #else
             // Other Platform: {Application.persistentDataPath}/LabData/{GameID}
             LabTools.SetDataPath(Path.Combine(Application.persistentDataPath, "LabData", _labDataConfig.GameID));
-            LabTools.LogWarning($"Non-tested Platform detected!  LabDataPath={LabTools.DataPath}");
+            LabTools.Log($"Non-tested Platform detected!  LabDataPath={LabTools.DataPath}");
 #endif
             _labDataConfig.LocalSavePath = LabTools.DataPath;
         }        
@@ -172,7 +172,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     /// 導入 UserID，初始化上傳功能
     /// </summary>
     /// <param name="userID"></param>
-    public void LabDataInit(string userID)
+    public void LabDataInit(string userID, string motionIdOverride = "")
     {
         if (_isClientInit) 
             return;
@@ -192,9 +192,9 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         _fileName = string.Join("_", 
             _labDataConfig.BucketID,
             _labDataConfig.GameID, 
-            string.IsNullOrWhiteSpace(_labDataConfig.MotionDataID) ? 
+            string.IsNullOrWhiteSpace(motionIdOverride) ? 
                 DateTime.Now.ToString(_labDataConfig.LocalSaveDataTimeLayout) : 
-                _labDataConfig.MotionDataID //.PadLeft(3, '0')            
+                motionIdOverride //.PadLeft(3, '0')            
         );
         if(!string.IsNullOrEmpty(_labDataConfig.GameMode))
         {

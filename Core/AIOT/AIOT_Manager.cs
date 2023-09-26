@@ -53,12 +53,15 @@ namespace LabFrame2023.AIOT
 
         /// <summary>
         /// 獲取遊戲的啟動參數
+        /// 如果確實有啟動參數，系統會自動呼叫 LabDataManager.LabDataInit() 啟動資料採集模組
         /// </summary>
         /// <typeparam name="T">你的 CourseParams 類別</typeparam>
         public T GetCourseParams<T>()
         {
             if(_gameParams == null)
                 return default; // null
+
+            LabDataManager.Instance.LabDataInit(_gameParams.userId, _gameParams.MotiondataId);
             return JsonUtility.FromJson<T>(_gameParams.CourseParams);            
         }
 

@@ -18,11 +18,6 @@ namespace LabFrame2023
         /// </summary>
         public string BucketID;        
         /// <summary>
-        /// (Optional) 資料序列號，留空則會使用時間作為序列號
-        /// 使用 AIOT 時會覆蓋此處設定
-        /// </summary>
-        public string MotionDataID;
-        /// <summary>
         /// （Optional）遊戲模式
         /// </summary>
         public string GameMode;
@@ -33,7 +28,7 @@ namespace LabFrame2023
         /// </summary>
         public string LocalSavePath;
         /// <summary>
-        /// 儲存檔案時，資料夾的 Timestamp 命名格式
+        /// 儲存檔案時，資料的 Timestamp 命名格式
         /// </summary>
         public string LocalSaveDataTimeLayout;    
         
@@ -46,7 +41,6 @@ namespace LabFrame2023
 
             GameID = "";
             BucketID = "";
-            MotionDataID = "";
             GameMode = "";
 
             LocalSavePath = "";
