@@ -1,5 +1,5 @@
 {
-    "name": "com.xrlab.labframe2023",
+    "name": "com.xrlab.labframe",
     "version": "0.0.3",
     "displayName": "Lab Frame 2023",
     "description": "NCU WMLABxXRLAB (Lab317/318)\nLab Frame 2023",
@@ -10,7 +10,7 @@
     "licensesUrl": "https://youtu.be/dQw4w9WgXcQ",
     "author": {
       "name": "NCU wmlab & xrlab",
-      "email": "me@jcxyis.com",
+      "email": "wmlabwmlab@gmail.com",
       "url": "https://staff.csie.ncu.edu.tw/shihchingyeh/index2.html"
     }
   }
