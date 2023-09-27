@@ -16,7 +16,7 @@ public class LabApplication : LabSingleton<LabApplication>
     /// <summary>
     /// Manager List
     /// </summary>
-    private List<IManager> _managers;
+    private List<IManager> _managers = new List<IManager>();
 
     private void Awake()
     {
@@ -35,7 +35,21 @@ public class LabApplication : LabSingleton<LabApplication>
     /// </summary>
     private void ApplicationInit()
     {
-        _managers = FindObjectsOfType<MonoBehaviour>().OfType<IManager>().ToList();
+        // Instantiate managers from Resources/IManagers
+        var managerPrefabs = Resources.LoadAll<GameObject>("IManagers");
+        foreach (var managerPrefab in managerPrefabs)
+        {
+            var managerGameObject = Instantiate(managerPrefab, transform);
+            var manager = managerGameObject.GetComponent<IManager>();
+            if (manager == null)
+            {
+                Debug.LogWarning($"Cannot find IManager in {managerPrefab.name}!");                
+                continue;
+            }
+            _managers.Add(manager);
+        }
+
+        // _managers = FindObjectsOfType<MonoBehaviour>().OfType<IManager>().ToList();
         _managers.ForEach(p =>
         {
             p.ManagerInit();
@@ -47,17 +61,20 @@ public class LabApplication : LabSingleton<LabApplication>
     /// </summary>
     private IEnumerator ApplicationDisposeAsync(DisposeOptions options = DisposeOptions.Quit)
     {
-        if (_managers.Count == 0)
-        {
-            yield break;
-        }
-
+        // Dispose all managers
         for (int i = 0; i < _managers.Count; i++)
         {
-            yield return StartCoroutine(_managers[i].ManagerDispose());
+            yield return StartCoroutine(_managers[i].ManagerDispose());        
         }
         _managers.Clear();
 
+        // Dispose all child
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            Destroy(transform.GetChild(i).gameObject);
+        }
+
+        // Do targeted action
         switch (options)
         {
             case DisposeOptions.Restart:

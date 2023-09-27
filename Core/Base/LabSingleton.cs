@@ -3,6 +3,11 @@ using UnityEngine;
 
 namespace LabFrame2023
 {
+    /// <summary>
+    /// Lab Singleton.
+    /// If LabFrame has not instantiated, it will be instantiated from Resources/LabFrame (And it'll bring out other IManagers from Resources/IManagers)
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public abstract class LabSingleton<T> : MonoBehaviour where T : LabSingleton<T>
     {
         protected static LabApplication m_labApplicationInstance;
@@ -21,9 +26,9 @@ namespace LabFrame2023
                         // load LabFrame from Resources
                         if(object.ReferenceEquals(LabSingleton<T>.m_labApplicationInstance, null))
                         {
-                            Debug.Log("Init LabFrame from Resources");
                             var g = Instantiate(Resources.Load<GameObject>("LabFrame"));
-                            m_Instance = g.GetComponentInChildren<T>();
+                            m_Instance = FindObjectOfType<T>();
+                            Debug.Log("Inited LabFrame from Resources");
                         }
                         if(object.ReferenceEquals(LabSingleton<T>.m_Instance, null))
                             Debug.LogError("Cannot find a gameobject of instance " + typeof(T).Name + "!");
