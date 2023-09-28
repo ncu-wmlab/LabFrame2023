@@ -34,7 +34,7 @@ public class LabApplication : LabSingleton<LabApplication>
     /// 初始化
     /// </summary>
     private void ApplicationInit()
-    {
+    {        
         // Instantiate managers from Resources/IManagers
         var managerPrefabs = Resources.LoadAll<GameObject>("IManagers");
         foreach (var managerPrefab in managerPrefabs)
@@ -43,7 +43,7 @@ public class LabApplication : LabSingleton<LabApplication>
             var manager = managerGameObject.GetComponent<IManager>();
             if (manager == null)
             {
-                Debug.LogWarning($"Cannot find IManager in {managerPrefab.name}!");                
+                Debug.LogWarning($"Cannot find IManager in {managerPrefab.name}!");
                 continue;
             }
             _managers.Add(manager);

@@ -14,10 +14,20 @@ public class AndroidHelper
     /// </summary>
     public static readonly AndroidJavaObject CurrentActivity;
 
+
     static AndroidHelper()
     {
         UnityClass = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-        CurrentActivity = UnityClass.GetStatic<AndroidJavaObject>("currentActivity");
+        CurrentActivity = UnityClass.GetStatic<AndroidJavaObject>("currentActivity");        
+    }
+
+    /// <summary>
+    /// 檢查/請求儲存相關的權限
+    /// </summary>
+    public static bool CheckStoragePermission()
+    {
+        using AndroidJavaClass pluginClass = new AndroidJavaClass("com.xrlab.labframe_plugin.Main");
+        return pluginClass.CallStatic<bool>("RequestStoragePermission", CurrentActivity, Application.identifier);
     }
     
     /// <summary>

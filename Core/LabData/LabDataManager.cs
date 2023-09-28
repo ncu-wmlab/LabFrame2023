@@ -55,41 +55,10 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         // Get Config
         _labDataConfig = LabTools.GetConfig<LabDataConfig>();
 
-        #region 初始化
-        // Init GameID
-        if(string.IsNullOrEmpty(_labDataConfig.GameID))
-        {
-            _labDataConfig.GameID = Application.productName;
-            Debug.Log($"已自動指定 GameID={_labDataConfig.GameID}");
-        }
-        // 初始化根目錄
-        if (!string.IsNullOrEmpty(_labDataConfig.LocalSavePath) ) // 在 LabDataConfig 中已設定 LocalPath
-        {
-            LabTools.SetDataPath(_labDataConfig.LocalSavePath);
-            if( !_labDataConfig.LocalSavePath.Contains(_labDataConfig.GameID))
-                LabTools.SetDataPath(Path.Combine(LabTools.DataPath, _labDataConfig.GameID));
-            Debug.Log("已手動指定 DataPath="+LabTools.DataPath);
-        }
-        else
-        {
-#if UNITY_STANDALONE_WIN
-            // Windows: {Documents}/LabData/{GameID}
-            LabTools.SetDataPath(Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), 
-                "LabData",
-                _labDataConfig.GameID)
-            );
-#elif UNITY_ANDROID
-            // Android: /storage/emulated/0/LabData/{GameID}
-            LabTools.SetDataPath(Path.Combine("/storage/emulated/0/LabData/", _labDataConfig.GameID));
-#else
-            // Other Platform: {Application.persistentDataPath}/LabData/{GameID}
-            LabTools.SetDataPath(Path.Combine(Application.persistentDataPath, "LabData", _labDataConfig.GameID));
-            LabTools.Log($"Non-tested Platform detected!  LabDataPath={LabTools.DataPath}");
-#endif
-            _labDataConfig.LocalSavePath = LabTools.DataPath;
-        }        
-        #endregion 
+        // Check/Request Permission       
+#if UNITY_ANDROID
+        AndroidHelper.CheckStoragePermission();        
+#endif    
 
         // (PC)
         Application.wantsToQuit += () => !IsClientRunning;
@@ -105,8 +74,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     /// </summary>
     IEnumerator IManager.ManagerDispose()
     {
-        // Quit UI
-        
+        // Quit UI        
         if (_quittingPanel == null)
         {
             Transform container = null;
@@ -132,7 +100,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             item.Value.WriterDispose();
         }
         // Clear ForSend
-        LabTools.DeleteAllEmptyDir( LabTools.FOR_SEND_DIR);
+        LabTools.DeleteAllEmptyDir(LabTools.FOR_SEND_DIR);
 
         // Clear Data
         GameData = null;
@@ -188,6 +156,49 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         }
         #endregion
 
+        #region 初始化 GameID, DataPath
+        // Check Permission
+#if UNITY_ANDROID
+        if(!AndroidHelper.CheckStoragePermission())
+        {
+            Debug.LogError("[LabDataManager] 權限不足，無法存取檔案，請確認是否有給予儲存權限！！");
+            Application.Quit();
+        } 
+#endif        
+        if(string.IsNullOrEmpty(_labDataConfig.GameID))
+        {
+            _labDataConfig.GameID = Application.productName;
+            Debug.Log($"已自動指定 GameID={_labDataConfig.GameID}");
+        }
+        // 初始化根目錄
+        if (!string.IsNullOrEmpty(_labDataConfig.LocalSavePath) ) // 在 LabDataConfig 中已設定 LocalPath
+        {
+            LabTools.SetDataPath(_labDataConfig.LocalSavePath);
+            if( !_labDataConfig.LocalSavePath.Contains(_labDataConfig.GameID))
+                LabTools.SetDataPath(Path.Combine(LabTools.DataPath, _labDataConfig.GameID));
+            Debug.Log("已手動指定 DataPath="+LabTools.DataPath);
+        }
+        else
+        {
+#if UNITY_STANDALONE_WIN
+            // Windows: {Documents}/LabData/{GameID}
+            LabTools.SetDataPath(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), 
+                "LabData",
+                _labDataConfig.GameID)
+            );
+#elif UNITY_ANDROID
+            // Android: /storage/emulated/0/LabData/{GameID}
+            LabTools.SetDataPath(Path.Combine("/storage/emulated/0/LabData/", _labDataConfig.GameID));
+#else
+            // Other Platform: {Application.persistentDataPath}/LabData/{GameID}
+            LabTools.SetDataPath(Path.Combine(Application.persistentDataPath, "LabData", _labDataConfig.GameID));
+            LabTools.Log($"Non-tested Platform detected!  LabDataPath={LabTools.DataPath}");
+#endif
+            _labDataConfig.LocalSavePath = LabTools.DataPath;
+        }        
+        #endregion
+
         #region File Name        
         _fileName = string.Join("_", 
             _labDataConfig.BucketID,
@@ -201,7 +212,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             _fileName = string.Join("_", _fileName, _labDataConfig.GameMode);
         }
         #endregion
-          
+        
         #region 初始化本地存檔 ForStore
         // Create folder ForStore
         _saveDataPath = Path.Combine( LabTools.DataPath, LabTools.FOR_STORE_DIR);
