@@ -74,11 +74,12 @@ namespace LabFrame2023
         /// <typeparam name="T">資料夾路徑。如果該路徑沒有資料夾，則會先建立一個</typeparam>
         public static void SetDataPath(string path)
         {
+            Log("[LabTools] Set Data Path: " + path);
             DataPath = path;
             if (!Directory.Exists(DataPath))
             {
                 Directory.CreateDirectory(path);
-            }
+            }            
         }
 
         /// <summary>

@@ -46,6 +46,7 @@ public class LabApplication : LabSingleton<LabApplication>
                 Debug.LogWarning($"Cannot find IManager in {managerPrefab.name}!");
                 continue;
             }
+            managerGameObject.name = manager.GetType().Name;
             _managers.Add(manager);
         }
 

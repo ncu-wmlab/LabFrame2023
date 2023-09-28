@@ -65,8 +65,8 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 
         GameData = new LabGameData();
         _dataWriterDic = new Dictionary<Type, LabDataWriter>();
-        _dataQueue = new ConcurrentQueue<LabDataBase>();
-        _writeThread = new Thread(Queue2Write);        
+        _dataQueue = new ConcurrentQueue<LabDataBase>(); 
+        _writeThread = new Thread(Queue2Write);               
     }
 
     /// <summary>
@@ -119,7 +119,8 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     /// </summary>
     private void StartUpload()
     {
-        if (IsClientRunning) return;
+        if (IsClientRunning) 
+            return;
         Debug.Log("Start Upload");
         IsClientRunning = true;
     }
@@ -163,12 +164,12 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         {
             Debug.LogError("[LabDataManager] 權限不足，無法存取檔案，請確認是否有給予儲存權限！！");
             Application.Quit();
-        } 
+        }             
 #endif        
         if(string.IsNullOrEmpty(_labDataConfig.GameID))
         {
             _labDataConfig.GameID = Application.productName;
-            Debug.Log($"已自動指定 GameID={_labDataConfig.GameID}");
+            LabTools.Log($"已自動指定 GameID={_labDataConfig.GameID}");
         }
         // 初始化根目錄
         if (!string.IsNullOrEmpty(_labDataConfig.LocalSavePath) ) // 在 LabDataConfig 中已設定 LocalPath
@@ -176,7 +177,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             LabTools.SetDataPath(_labDataConfig.LocalSavePath);
             if( !_labDataConfig.LocalSavePath.Contains(_labDataConfig.GameID))
                 LabTools.SetDataPath(Path.Combine(LabTools.DataPath, _labDataConfig.GameID));
-            Debug.Log("已手動指定 DataPath="+LabTools.DataPath);
+            LabTools.Log("已手動指定 DataPath="+LabTools.DataPath);
         }
         else
         {
@@ -195,7 +196,6 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             LabTools.SetDataPath(Path.Combine(Application.persistentDataPath, "LabData", _labDataConfig.GameID));
             LabTools.Log($"Non-tested Platform detected!  LabDataPath={LabTools.DataPath}");
 #endif
-            _labDataConfig.LocalSavePath = LabTools.DataPath;
         }        
         #endregion
 
@@ -231,8 +231,9 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         _sendDataPath = LabTools.CreateSaveDataFolder(_sendDataPath);
         #endregion
 
-        StartUpload();
         _isClientInit = true;
+
+        StartUpload();        
         _writeThread.Start();
     }   
 
@@ -301,6 +302,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             {
                 DoOnce(d);
             }
+            Thread.Sleep(100);
         }
     }
     private void DoOnce(LabDataBase data)
