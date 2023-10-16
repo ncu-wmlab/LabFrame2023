@@ -1,17 +1,24 @@
 {
     "name": "com.xrlab.labframe",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "displayName": "Lab Frame 2023",
     "description": "NCU WMLABxXRLAB (Lab317/318)\nLab Frame 2023",
     "unity": "2020.3",
     "unityRelease": "33f1",
     "documentationUrl": "https://github.com/ncu-wmlab/LabFrame2023",
-    "changelogUrl": "https://github.com/ncu-wmlab/LabFrame2023/commits/master",
+    "changelogUrl": "https://github.com/ncu-wmlab/LabFrame2023",
     "licensesUrl": "https://youtu.be/dQw4w9WgXcQ",
     "author": {
       "name": "NCU wmlab & xrlab",
       "email": "wmlabwmlab@gmail.com",
       "url": "https://staff.csie.ncu.edu.tw/shihchingyeh/index2.html"
-    }
+    },
+    "samples": [
+      {
+        "displayName": "Android Sample",
+        "description": "",
+        "path": "Samples~/AndroidDemo/"
+      }
+    ]
 }
   
