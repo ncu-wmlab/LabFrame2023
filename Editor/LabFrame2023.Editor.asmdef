@@ -1,0 +1,18 @@
+{
+    "name": "NewAssembly",
+    "rootNamespace": "LabFrame2023.Editor",
+    "references": [
+        "GUID:446fbb70571d4224d98108c0517d6b29"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

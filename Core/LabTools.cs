@@ -259,10 +259,9 @@ namespace LabFrame2023
         /// 取得對應 Config 檔設定資料
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="isNew">設定 true 可以刪掉設定檔，重建一個乾淨的</param>
-        /// <param name="filePath"></param>
+        /// <param name="onlyUseTemplate">設定 true 表示"執行檔"只使用範例模板</param>
         /// <returns></returns>
-        public static T GetConfig<T>(bool isNew = false) where T : class, new()
+        public static T GetConfig<T>(bool onlyUseTemplate = false) where T : class, new()
         {
             var path = ConfigPath;
             if (!Directory.Exists(path))
@@ -270,17 +269,33 @@ namespace LabFrame2023
                 Directory.CreateDirectory(path);
             }
 
+            // path
             path = Path.Combine( path, typeof(T).Name + ".json");
-            if (isNew && File.Exists(path))
+
+            if (File.Exists(path) && (!Application.isEditor && !onlyUseTemplate))
+            {        
+#if UNITY_EDITOR
+                // 編輯器內直接重建新的，以確保欄位完整性
+                T t = new T();   
+                try 
+                {
+                    t = JsonUtility.FromJson<T>(File.ReadAllText(path));
+                } 
+                catch (Exception e)
+                {
+                    Debug.LogWarning("讀取現有設定檔失敗，已建立一個全新的設定檔。請記得前往設定內容。\n" + e.Message);
+                }
+                File.WriteAllText(path, JsonUtility.ToJson(t, true));
+                return t;
+#else
+                return JsonUtility.FromJson<T>(File.ReadAllText(path));
+#endif                        
+            }            
+            else // 找不到 config 檔
             {
-                File.Delete(path);
-            }
-            
-            if (!File.Exists(path)) // 找不到 config 檔
-            {
+                T t;
                 // 從 Resources 找個範例檔案
                 var file = Resources.Load<TextAsset>("Config/"+typeof(T).Name);
-                T t;
                 if(file == null)
                 {
                     Log($"未找到{typeof(T).Name} 的設定檔，並且也沒在 Resources/{typeof(T).Name} 找到範例，已建立一個全新的設定檔。請記得前往設定內容。");
@@ -291,70 +306,9 @@ namespace LabFrame2023
                     Log($"未找到{typeof(T).Name} 的設定檔，而在 Resources 找到範例，已依此建立設定檔。");
                     t = JsonUtility.FromJson<T>(file.text);
                 }
-                WriteConfig(t);
-            }
-
-            StreamReader sr = new StreamReader(path);
-            var data = JsonUtility.FromJson<T>(sr.ReadToEnd());
-            sr.Close();
-            return data;
-        }
-
-        /// <summary>
-        /// 檢查本地是否儲存過 Config 檔
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public static bool CheckConfig<T>() where T : class
-        {
-            var path = Path.Combine( ConfigPath, typeof(T).Name + ".json");
-            if (File.Exists(path))
-            {
-                return true;
-            }
-            return false;
-        }
-
-
-        /// <summary>
-        /// 寫入對應 Config 設定資料
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="t"></param>
-        /// <param name="dataName"></param>
-        /// <param name="isOverWrite"></param>
-        /// <returns></returns>
-        protected static void WriteConfig<T>(T t, bool isOverWrite = false) where T : class, new()
-        {
-            // 檢查資料夾
-            var path = ConfigPath;
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
-
-            path = Path.Combine( path, typeof(T).Name + ".json");
-            var json = JsonUtility.ToJson(t, true);
-            if (!File.Exists(path))
-            {
-                var fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                StreamWriter sw = new StreamWriter(fs);
-                sw.Write(json);
-                sw.Close();
-            }
-            else if (File.Exists(path) && isOverWrite)
-            {
-                var fs = new FileStream(path, FileMode.Truncate, FileAccess.ReadWrite);
-                fs.Close();
-                fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                StreamWriter sw = new StreamWriter(fs);
-                sw.Write(json);
-                sw.Close();
-            }
-            else
-            {
-                Log("如果需要覆蓋資料，請在 Config 中設置 isOverWrite = true");
-            }
+                File.WriteAllText(path, JsonUtility.ToJson(t, true));
+                return t;
+            }            
         }
 
         #endregion

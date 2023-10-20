@@ -6,20 +6,20 @@ using UnityEngine;
 namespace LabFrame2023 {
     public static class JsonHelper
     {
-        public static T[] FromJson<T>(string json)
+        public static T[] FromJsonArray<T>(string json)
         {
             Wrapper<T> wrapper = JsonUtility.FromJson<Wrapper<T>>(json);
             return wrapper.data;
         }
 
-        public static string ToJson<T>(T[] array)
+        public static string ToJsonArray<T>(T[] array)
         {
             Wrapper<T> wrapper = new Wrapper<T>();
             wrapper.data = array;
             return JsonUtility.ToJson(wrapper);
         }
 
-        public static string ToJson<T>(T[] array, bool prettyPrint)
+        public static string ToJsonArray<T>(T[] array, bool prettyPrint)
         {
             Wrapper<T> wrapper = new Wrapper<T>();
             wrapper.data = array;

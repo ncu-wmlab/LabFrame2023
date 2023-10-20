@@ -16,7 +16,7 @@ namespace LabFrame2023.AIOT
         public void ManagerInit()                    
         {
             // 是否啟用 AIOT？
-            _config = LabTools.GetConfig<AIOT_Config>();
+            _config = LabTools.GetConfig<AIOT_Config>(true);
             if(!_config.Enabled)
                 return;
 
@@ -44,7 +44,7 @@ namespace LabFrame2023.AIOT
             // 拿到我們要的啟動參數
             if(string.IsNullOrEmpty(paramJson))
             {
-                Debug.LogWarning("[AIOT] 未透過 AIOT Platform 啟動：沒接收到啟動參數。");
+                Debug.Log("[AIOT] 未透過 AIOT Platform 啟動：沒接收到啟動參數。");
                 return;
             }            
             print("[AIOT] 啟動參數：" + paramJson);
@@ -78,9 +78,15 @@ namespace LabFrame2023.AIOT
         protected override void OnApplicationQuit()
         {
             base.OnApplicationQuit();
-#if UNITY_ANDROID
+            
+            if(!_config.Enabled)
+                return;
+
+#if UNITY_ANDROID            
             // 跳回 AIOT Platform App
-            AndroidHelper.OpenApk(_config.AIOTPlatformPackageName);
+            string packname = _config.AIOTPlatformPackageName;
+            Debug.Log($"Now jumping back to AIOT Platform ({packname})");
+            AndroidHelper.OpenApk(packname);
 #endif
         }
     }

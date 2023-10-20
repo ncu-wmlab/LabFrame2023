@@ -43,7 +43,7 @@ public class LabApplication : LabSingleton<LabApplication>
             var manager = managerGameObject.GetComponent<IManager>();
             if (manager == null)
             {
-                Debug.LogWarning($"Cannot find IManager in {managerPrefab.name}!");
+                Debug.LogError($"Cannot find IManager in {managerPrefab.name}!");
                 continue;
             }
             managerGameObject.name = manager.GetType().Name;
@@ -53,7 +53,14 @@ public class LabApplication : LabSingleton<LabApplication>
         // _managers = FindObjectsOfType<MonoBehaviour>().OfType<IManager>().ToList();
         _managers.ForEach(p =>
         {
-            p.ManagerInit();
+            try
+            {
+                p.ManagerInit();
+            }
+            catch(Exception e)
+            {
+                Debug.LogError($"<b>Error while initializing {p.GetType().Name}!</b> {e}");
+            }
         });
     }
 

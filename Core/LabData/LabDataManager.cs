@@ -274,15 +274,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         }
 
         return f;
-    }
-
-    /// <summary>
-    /// 還原 LabData Config 
-    /// </summary>
-    public void ResetConfig()
-    {
-        _labDataConfig = LabTools.GetConfig<LabDataConfig>(true);
-    }    
+    } 
 
     #endregion
 
