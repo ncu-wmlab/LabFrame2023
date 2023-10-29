@@ -4,6 +4,9 @@
 修改自 LabFrame 2022，功能修正與結合 AIOT
 
 ## CHANGELOG
+#### 0.0.10
+- Add a warning when attempt to update config in editor
+
 #### 0.0.9
 - Expose `LabConfig`-related functions (In `LabTools`)
     - `GetConfigPath<T>()` 

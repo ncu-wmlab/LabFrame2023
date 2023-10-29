@@ -309,9 +309,14 @@ namespace LabFrame2023
         /// </summary>
         /// <typeparam name="T">Config 型別</typeparam>
         /// <param name="t">欲寫入 Config 的資料</param>
-        public static void WriteConfig<T>(T t)
+        public static void WriteConfig<T>(T t, bool updateInEditor = false)
         {
             var path = GetConfigPath<T>();
+            if(Application.isEditor && !updateInEditor)
+            {
+                Log($"編輯器內將不更新設定檔，避免 build 時一起被打包進去。如果仍要更新，請在 WriteConfig<T> 的第二個參數 updateInEditor 設定為 true。");
+                return;
+            }
             File.WriteAllText(path, JsonUtility.ToJson(t, true));
             Log($"已更新設定檔 "+path);
         }
