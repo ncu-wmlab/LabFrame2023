@@ -4,6 +4,14 @@
 修改自 LabFrame 2022，功能修正與結合 AIOT
 
 ## CHANGELOG
+#### 0.0.9
+- Expose `LabConfig`-related functions (In `LabTools`)
+    - `GetConfigPath<T>()` 
+    - `GetConfig<T>()`
+    - `WriteConfig(T)`
+    - `ResetConfig<T>()`
+- Update demo
+
 #### 0.0.8
 - Added support of platform-dependent SDK by Editor UI (LabFrame2023 > Choose Development Platform)
 

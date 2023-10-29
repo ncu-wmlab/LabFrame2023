@@ -83,10 +83,10 @@ namespace LabFrame2023
         }
 
         /// <summary>
-        /// 創建檔案資料夾，isNew 可以同名不同時間點創建
+        /// 創建檔案資料夾
         /// </summary>
         /// <param name="folderName"></param>
-        /// <param name="isNew"></param>
+        /// <param name="isNew">如果有同名資料夾，新建加上時間戳後綴的資料夾回傳</param>
         public static string CreateSaveDataFolder(string folderName, bool isNew = false)
         {
             if (Directory.Exists(folderName))
@@ -171,9 +171,7 @@ namespace LabFrame2023
                     }
 
                     files = list_files.ToArray();
-                }
-                
-                
+                }                                
             }
             else // 特定遊戲
             {
@@ -184,8 +182,7 @@ namespace LabFrame2023
                     return null;
                 }
                 files = Directory.GetFiles(path, "*.json", SearchOption.AllDirectories);
-            }
-            
+            }            
 
             return files;
         }
@@ -255,24 +252,34 @@ namespace LabFrame2023
         #endregion
 
         #region Config method
+
         /// <summary>
-        /// 取得對應 Config 檔設定資料
+        /// 取得對應 Config 路徑
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="onlyUseTemplate">設定 true 表示"執行檔"只使用範例模板</param>
         /// <returns></returns>
-        public static T GetConfig<T>(bool onlyUseTemplate = false) where T : class, new()
+        public static string GetConfigPath<T>()
         {
-            var path = ConfigPath;
-            if (!Directory.Exists(path))
+            if (!Directory.Exists(ConfigPath))
             {
-                Directory.CreateDirectory(path);
+                Directory.CreateDirectory(ConfigPath);
             }
 
-            // path
-            path = Path.Combine( path, typeof(T).Name + ".json");
+            return Path.Combine(ConfigPath, typeof(T).Name + ".json");
+        }
 
-            if (File.Exists(path) && (!Application.isEditor && !onlyUseTemplate))
+        /// <summary>
+        /// 取得對應 Config 檔設定資料 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="onlyUseTemplate">設定 true 表示只使用範例模板 (Editor 不適用)</param>
+        /// <returns></returns>
+        public static T GetConfig<T>(bool onlyUseTemplate = false) where T : class, new()
+        {            
+            // path
+            var path = GetConfigPath<T>();
+
+            if (Application.isEditor || (File.Exists(path) && !onlyUseTemplate))
             {        
 #if UNITY_EDITOR
                 // 編輯器內直接重建新的，以確保欄位完整性
@@ -293,22 +300,49 @@ namespace LabFrame2023
             }            
             else // 找不到 config 檔
             {
-                T t;
-                // 從 Resources 找個範例檔案
-                var file = Resources.Load<TextAsset>("Config/"+typeof(T).Name);
-                if(file == null)
-                {
-                    Log($"未找到{typeof(T).Name} 的設定檔，並且也沒在 Resources/{typeof(T).Name} 找到範例，已建立一個全新的設定檔。請記得前往設定內容。");
-                    t = new T();
-                }
-                else
-                {
-                    Log($"未找到{typeof(T).Name} 的設定檔，而在 Resources 找到範例，已依此建立設定檔。");
-                    t = JsonUtility.FromJson<T>(file.text);
-                }
-                File.WriteAllText(path, JsonUtility.ToJson(t, true));
-                return t;
+                return ResetConfig<T>();
             }            
+        }
+
+        /// <summary>
+        /// 更新對應 Config 檔設定資料 
+        /// </summary>
+        /// <typeparam name="T">Config 型別</typeparam>
+        /// <param name="t">欲寫入 Config 的資料</param>
+        public static void WriteConfig<T>(T t)
+        {
+            var path = GetConfigPath<T>();
+            File.WriteAllText(path, JsonUtility.ToJson(t, true));
+            Log($"已更新設定檔 "+path);
+        }
+
+        /// <summary>
+        /// 依照 Config 預設值重建 Config 
+        /// </summary>
+        /// <typeparam name="T">Config 型別</typeparam>
+        /// <returns>重建之 Config 物件</returns>
+        public static T ResetConfig<T>()  where T : class, new()
+        {
+            T t;
+            var path = GetConfigPath<T>();
+
+            // 從 Resources 找個範例檔案
+            var file = Resources.Load<TextAsset>("Config/"+typeof(T).Name);
+            if(file == null || Application.isEditor)
+            {
+                if(Application.isEditor)
+                    Log($"已重建一個全新的 {typeof(T).Name} 設定檔。請記得前往設定內容。 路徑："+path);
+                else
+                    Debug.LogWarning($"未找到{typeof(T).Name} 的設定檔，並且也沒在 Resources 找到範例，已建立一個全新的設定檔。");
+                t = new T();
+            }
+            else
+            {
+                Log($"未找到 {typeof(T).Name} 的設定檔，而在 Resources 找到範例，已依此建立設定檔。");
+                t = JsonUtility.FromJson<T>(file.text);
+            }
+            File.WriteAllText(path, JsonUtility.ToJson(t, true));
+            return t;
         }
 
         #endregion
