@@ -4,6 +4,11 @@
 修改自 LabFrame 2022，功能修正與結合 AIOT
 
 ## CHANGELOG
+#### 0.0.11
+- Fix Editor Play mode unplayable when develop on Android Platform 
+- Fix AndroidHelper cannot be initilized & add context field
+- Fix LabDataManager not completely cleaned up
+
 #### 0.0.10
 - Add a warning when attempt to update config in editor
 

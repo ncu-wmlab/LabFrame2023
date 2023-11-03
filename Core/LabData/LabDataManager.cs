@@ -56,7 +56,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         _labDataConfig = LabTools.GetConfig<LabDataConfig>();
 
         // Check/Request Permission       
-#if UNITY_ANDROID
+#if UNITY_ANDROID && !UNITY_EDITOR
         AndroidHelper.CheckStoragePermission();        
 #endif    
 
@@ -99,14 +99,18 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         {
             item.Value.WriterDispose();
         }
+        _writeThread.Abort();
+
         // Clear ForSend
         LabTools.DeleteAllEmptyDir(LabTools.FOR_SEND_DIR);
 
         // Clear Data
         GameData = null;
-        _fileName = "";
         WriteDataAction = null;
         SendDataAction = null;
+        _fileName = "";
+        _dataQueue = new ConcurrentQueue<LabDataBase>();
+        _dataWriterDic = new Dictionary<Type, LabDataWriter>();        
 
         // Finish Dispose
         StopUpload();
@@ -159,7 +163,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 
         #region 初始化 GameID, DataPath
         // Check Permission
-#if UNITY_ANDROID
+#if UNITY_ANDROID && !UNITY_EDITOR
         if(!AndroidHelper.CheckStoragePermission())
         {
             Debug.LogError("[LabDataManager] 權限不足，無法存取檔案，請確認是否有給予儲存權限！！");
@@ -181,7 +185,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         }
         else
         {
-#if UNITY_STANDALONE_WIN
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR
             // Windows: {Documents}/LabData/{GameID}
             LabTools.SetDataPath(Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), 

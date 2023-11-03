@@ -23,9 +23,9 @@ namespace LabFrame2023
         public static string ConfigPath { get; private set; }
         /// <summary>
         /// 資料存放路徑
-        /// 依平台不同 (由 LabDataManager 設定)
+        /// 依平台不同 (由 LabDataManager 設定，在之前會是 null)
         /// </summary>
-        public static string DataPath { get; private set; }
+        public static string DataPath { get; private set; } = null;
         /// <summary>
         /// 可開關是否 Log
         /// </summary>
@@ -269,7 +269,7 @@ namespace LabFrame2023
         }
 
         /// <summary>
-        /// 取得對應 Config 檔設定資料 
+        /// 取得對應 Config 檔資料 
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="onlyUseTemplate">設定 true 表示只使用範例模板 (Editor 不適用)</param>

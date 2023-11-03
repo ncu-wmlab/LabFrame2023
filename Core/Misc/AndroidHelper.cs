@@ -14,6 +14,10 @@ public class AndroidHelper
     /// </summary>
     public static readonly AndroidJavaObject CurrentActivity;
     /// <summary>
+    /// UnityContext Object
+    /// </summary>
+    public static readonly AndroidJavaObject UnityContext;
+    /// <summary>
     /// com.xrlab.labframe_plugin.Main
     /// </summary>
     protected static readonly AndroidJavaClass _pluginClass;
@@ -21,9 +25,14 @@ public class AndroidHelper
 
     static AndroidHelper()
     {
+#if UNITY_EDITOR
+        Debug.LogWarning("[AndroidHelper] Android plugin is not available in Editor.");
+#elif UNITY_ANDROID
         UnityClass = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
         CurrentActivity = UnityClass.GetStatic<AndroidJavaObject>("currentActivity");        
+        UnityContext = CurrentActivity.Call<AndroidJavaObject>("getApplicationContext");
         _pluginClass = new AndroidJavaClass("com.xrlab.labframe_plugin.Main");
+#endif
     }
 
 
