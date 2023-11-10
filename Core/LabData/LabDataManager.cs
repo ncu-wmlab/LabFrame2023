@@ -125,7 +125,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     {
         if (IsClientRunning) 
             return;
-        Debug.Log("Start Upload");
+        Debug.Log("[LabData] 啟動");
         IsClientRunning = true;
     }
 
@@ -135,7 +135,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     private void StopUpload()
     {
         if (!IsClientRunning) return;
-        Debug.Log("Stop Upload");
+        Debug.Log("[LabData] 停止");
         IsClientRunning = false;
     }
 

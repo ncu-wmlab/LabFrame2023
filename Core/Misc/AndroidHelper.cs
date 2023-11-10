@@ -25,6 +25,8 @@ public class AndroidHelper
 
     static AndroidHelper()
     {
+        if(Application.platform != RuntimePlatform.Android)
+            return;
 #if UNITY_EDITOR
         Debug.LogWarning("[AndroidHelper] Android plugin is not available in Editor.");
 #elif UNITY_ANDROID
@@ -41,7 +43,7 @@ public class AndroidHelper
     /// </summary>
     public static bool CheckStoragePermission()
     {
-        return _pluginClass.CallStatic<bool>("RequestStoragePermission", CurrentActivity, Application.identifier);
+        return _pluginClass.CallStatic<bool>("RequestStoragePermission", Application.identifier);
     }
     
     /// <summary>
@@ -59,7 +61,7 @@ public class AndroidHelper
         //     CurrentActivity.Call("startActivity", launchIntent);
         // }
         
-        _pluginClass.CallStatic("OpenApk", CurrentActivity, packageName);
+        _pluginClass.CallStatic("OpenApk", packageName);
 
         if(quitOnLaunch)
             Application.Quit();
@@ -71,7 +73,7 @@ public class AndroidHelper
     /// <param name="msg">訊息</param>
     public static void MakeToast(string msg)
     {
-        _pluginClass.CallStatic("MakeToast", CurrentActivity, msg);
+        _pluginClass.CallStatic("MakeToast", msg);
     }
 #endif
 }
