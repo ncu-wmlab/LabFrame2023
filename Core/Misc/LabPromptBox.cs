@@ -14,6 +14,8 @@ public class LabPromptBox : MonoBehaviour
 
     public void Init(string content, Action onConfirm = null, Action onCancel = null)
     {
+        gameObject.SetActive(true);
+
         _content.text = content;
 
         _confirmButton.onClick.RemoveAllListeners();
@@ -37,7 +39,9 @@ public class LabPromptBox : MonoBehaviour
             Debug.Log("[LabPromptBox] 偵測到有 Canvas 的 render mode 使用 Overlay 或 Camera：將此 LabPromptBox 的 render mode 設為 Overlay");
         }
 
-        gameObject.SetActive(true);
+#if USE_PICO
+        gameObject.GetComponentInChildren<Canvas>().gameObject.AddComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>();
+#endif
     }
 
     public void Hide()
@@ -53,10 +57,10 @@ public class LabPromptBox : MonoBehaviour
         Camera cam = Camera.main;
         while(true)
         {
-            transform.position = cam.transform.position + cam.transform.forward * .301f;  // 放在攝影機前面距離 0.3 的位置
+            transform.position = cam.transform.position + cam.transform.forward * .501f;  // 放在攝影機前面距離 0.3 的位置
             transform.LookAt(cam.transform);
             transform.Rotate(0, 180, 0);  // 旋轉
-            yield return new WaitForSecondsRealtime(.5f);
+            yield return new WaitForSecondsRealtime(3.0f);
         }
     }
 
