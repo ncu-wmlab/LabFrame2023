@@ -56,7 +56,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     void IManager.ManagerInit()
     {
         // Get Config
-        _labDataConfig = LabTools.GetConfig<LabDataConfig>();
+        _labDataConfig = LabTools.GetConfig<LabDataConfig>(true);
 
         // Check/Request Permission       
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -175,7 +175,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 #endif        
         if(string.IsNullOrEmpty(_labDataConfig.GameID))
         {
-            _labDataConfig.GameID = Application.productName;
+            _labDataConfig.GameID = Application.productName.Replace("_", "");
             LabTools.Log($"已自動指定 GameID={_labDataConfig.GameID}");
         }
         // 初始化根目錄
@@ -214,10 +214,10 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
                 DateTime.Now.ToString(_labDataConfig.LocalSaveDataTimeLayout) : 
                 motionIdOverride //.PadLeft(3, '0')            
         );
-        if(!string.IsNullOrEmpty(_labDataConfig.GameMode))
-        {
-            _fileName = string.Join("_", _fileName, _labDataConfig.GameMode);
-        }
+        // if(!string.IsNullOrEmpty(_labDataConfig.GameMode))
+        // {
+        //     _fileName = string.Join("_", _fileName, _labDataConfig.GameMode);
+        // }
         #endregion
         
         #region 初始化本地存檔 ForStore

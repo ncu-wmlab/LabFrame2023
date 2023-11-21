@@ -9,7 +9,7 @@ namespace LabFrame2023
         // public bool SendToServer;
         public bool IsTest;        
         /// <summary>
-        /// (Optional) 遊戲 ID ，用以建立資料庫根資料夾
+        /// (Optional) 遊戲 ID ，用以建立資料庫根資料夾 (不可以有底線_！！)
         /// 填空值表示使用遊戲名稱 (PlayerSettings.ProductName)
         /// </summary>
         public string GameID;
@@ -20,7 +20,7 @@ namespace LabFrame2023
         /// <summary>
         /// （Optional）遊戲模式
         /// </summary>
-        public string GameMode;
+        // public string GameMode;
         /// <summary>
         /// (Optional) 本地存檔位置
         /// 可為空，空值代表預設位置 (依平台不同)
@@ -41,7 +41,7 @@ namespace LabFrame2023
 
             GameID = "";
             BucketID = "";
-            GameMode = "";
+            // GameMode = "";
 
             LocalSavePath = "";
             LocalSaveDataTimeLayout = "yyyyMMddHHmmss";

@@ -4,10 +4,14 @@
 修改自 LabFrame 2022，功能修正與結合 AIOT
 
 ## CHANGELOG
-#### 0.0.13
-- `LabDataManager` add field `IsInited`
+#### 0.0.15
+- `LabDataManager` 
+    - add field `IsInited`
+    - remove field `GameMode`
 - Update demo
 
+#### 0.0.14
+#### 0.0.13
 #### 0.0.12
 - New: `LabPromptBox`, you can call `LabPromptBox.Show()` to create a message box
 - Update aar library
