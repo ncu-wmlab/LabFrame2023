@@ -8,18 +8,6 @@ public class LabPromptBoxDemo : MonoBehaviour
 {
     [SerializeField] InputField _input;
 
-
-    
-    void Start()
-    {
-
-    }
-
-    void Update()
-    {
-
-    }
-
     public void CreatePrompt()
     {
         LabPromptBox.Show(_input.text, () => {

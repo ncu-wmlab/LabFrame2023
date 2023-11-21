@@ -16,7 +16,7 @@ namespace LabFrame2023.AIOT
         public void ManagerInit()                    
         {
             // 是否啟用 AIOT？
-            _config = LabTools.GetConfig<AIOT_Config>(true);
+            _config = LabTools.GetConfig<AIOT_Config>();
             if(!_config.Enabled)
                 return;
 

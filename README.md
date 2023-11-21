@@ -5,6 +5,9 @@
 
 ## CHANGELOG
 #### 0.0.13
+- `LabDataManager` add field `IsInited`
+- Update demo
+
 #### 0.0.12
 - New: `LabPromptBox`, you can call `LabPromptBox.Show()` to create a message box
 - Update aar library

@@ -30,11 +30,14 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     /// </summary>
     public Action<SendInfo> SendDataAction { get; set; }
 
+    /// <summary>
+    /// LabDataManager 是否已初始化 (是否呼叫過 LabDataInit)
+    /// </summary>
+    public bool IsInited { get; private set; } = false;
+
     // LabData Config
     private LabDataConfig _labDataConfig;
-
-    // LabData Init
-    private bool _isClientInit = false;
+    
 
     // File ID
     private string _fileName = "";
@@ -114,7 +117,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 
         // Finish Dispose
         StopUpload();
-        _isClientInit = false;
+        IsInited = false;
         LabTools.Log("LabUploadManager Dispose");
     }
 
@@ -147,7 +150,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     /// <param name="userID"></param>
     public void LabDataInit(string userID, string motionIdOverride = "")
     {
-        if (_isClientInit) 
+        if (IsInited) 
             return;
 
         #region 驗證參數        
@@ -155,7 +158,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         {
             throw new ArgumentNullException("userID", "UserID can not be empty.");
         }
-        if(Path.GetInvalidFileNameChars().Any(userID.Contains))
+        if(userID.Contains("_") || Path.GetInvalidFileNameChars().Any(userID.Contains))
         {
             throw new ArgumentException("UserID contains invalid characters.", "userID");
         }
@@ -235,7 +238,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         _sendDataPath = LabTools.CreateSaveDataFolder(_sendDataPath);
         #endregion
 
-        _isClientInit = true;
+        IsInited = true;
 
         StartUpload();        
         _writeThread.Start();
@@ -303,9 +306,9 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     }
     private void DoOnce(LabDataBase data)
     {
-        if (!_isClientInit)
+        if (!IsInited)
         {
-            LabTools.Log("LabData 尚未初始化");
+            LabTools.LogError("LabData 尚未初始化");
             return;
         }
         DataWriterFunc(data);
