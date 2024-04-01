@@ -4,6 +4,9 @@
 修改自 LabFrame 2022，功能修正與結合 AIOT
 
 ## CHANGELOG
+#### 0.0.16
+- Change JSON serializer to NewtonsoftJson in LabDataManager
+
 #### 0.0.15
 - `LabDataManager` 
     - add field `IsInited`

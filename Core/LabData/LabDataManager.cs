@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using UnityEngine;
 using LabFrame2023;
+using Newtonsoft.Json;
 
 public class LabDataManager : LabSingleton<LabDataManager>, IManager
 {
@@ -404,7 +405,7 @@ public class LabDataWriter
         //     _first = false;
         // }
         
-        File.AppendAllText(_path, JsonUtility.ToJson(data) + Environment.NewLine, Encoding.UTF8);
+        File.AppendAllText(_path, JsonConvert.SerializeObject(data) + Environment.NewLine, Encoding.UTF8);
         
     }
 
