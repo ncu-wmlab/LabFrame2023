@@ -405,7 +405,9 @@ public class LabDataWriter
         //     _first = false;
         // }
         
-        File.AppendAllText(_path, JsonConvert.SerializeObject(data) + Environment.NewLine, Encoding.UTF8);
+        File.AppendAllText(_path, 
+            JsonConvert.SerializeObject(data, new JsonSerializerSettings{ReferenceLoopHandling = ReferenceLoopHandling.Ignore}) + Environment.NewLine, 
+            Encoding.UTF8);
         
     }
 
