@@ -10,6 +10,8 @@ namespace LabFrame2023.AIOT
         protected AIOT_Config _config = null; 
         protected AIOT_GameParams _gameParams = null;
 
+        protected bool _isEnabled = false;
+
         /// <summary>
         /// 遊戲啟動時接 AIOT 的參數
         /// </summary>
@@ -17,7 +19,8 @@ namespace LabFrame2023.AIOT
         {
             // 是否啟用 AIOT？
             _config = LabTools.GetConfig<AIOT_Config>(true);
-            if(!_config.Enabled)
+            _isEnabled = _config.Enabled;
+            if(!_isEnabled)
                 return;
 
             // 從 AIOT_Platform 抓資料
@@ -69,6 +72,7 @@ namespace LabFrame2023.AIOT
         {
             _config = null;
             _gameParams = null;
+            // _isEnabled = false;
             yield break;
         }
 
@@ -79,10 +83,10 @@ namespace LabFrame2023.AIOT
         {
             base.OnApplicationQuit();
             
-            if(!_config.Enabled)
+            if(!_isEnabled)
                 return;
 
-#if UNITY_ANDROID            
+#if UNITY_ANDROID && !UNITY_EDITOR
             // 跳回 AIOT Platform App
             string packname = _config.AIOTPlatformPackageName;
             Debug.Log($"Now jumping back to AIOT Platform ({packname})");

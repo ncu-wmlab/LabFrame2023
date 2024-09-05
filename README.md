@@ -4,6 +4,11 @@
 修改自 LabFrame 2022，功能修正與結合 AIOT
 
 ## CHANGELOG
+#### 0.0.18
+- Rewrite LabDataManager
+    - Support adding "appendix" to file name, which serves as a label to reference more easily
+- Fix Manager dispose bug
+
 #### 0.0.16
 - Change JSON serializer to NewtonsoftJson in LabDataManager
 

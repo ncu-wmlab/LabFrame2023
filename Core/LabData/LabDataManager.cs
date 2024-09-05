@@ -18,44 +18,79 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     public LabGameData GameData;
 
     /// <summary>
-    /// 遊戲是否正在進行（PC）
-    /// </summary>
-    public bool IsClientRunning { get; private set; }
-    /// <summary>
-    /// 儲存資料事件
-    /// </summary>
-    public Action<LabDataBase> WriteDataAction { get; set; }
-    /// <summary>
-    /// 上傳資料事件（非主執行緒事件，不可直接呼叫場景物件）
-    /// string = "" OR float = -1 過濾
-    /// </summary>
-    public Action<SendInfo> SendDataAction { get; set; }
-
-    /// <summary>
     /// LabDataManager 是否已初始化 (是否呼叫過 LabDataInit)
     /// </summary>
     public bool IsInited { get; private set; } = false;
 
-    // LabData Config
+    /// <summary>
+    /// 是否接受儲存新的 LabData 
+    /// </summary>
+    public bool IsClientRunning { get; private set; }
+
+    /// <summary>
+    /// 儲存資料事件：呼叫 WriteData 時觸發
+    /// </summary>
+    public Action<LabDataBase> WriteDataAction { get; set; }
+
+    /// <summary>
+    /// 上傳資料事件（非主執行緒事件，不可直接呼叫場景物件）
+    /// string = "" OR float = -1 過濾
+    /// </summary>
+    public Action<SendInfo> SendDataAction { get; set; }    
+
+    /// <summary>
+    /// LabData Config
+    /// </summary>
     private LabDataConfig _labDataConfig;
     
 
     // File ID
-    private string _fileName = "";
-    private string _saveDataPath = "";
-    private string _sendDataPath = "";
+    /// <summary>
+    /// <c>{BucketName}_{GameName}_{MotionDataID}</c>
+    /// </summary>
+    public string FileNamePre {get; private set;} = "";
+    /// <summary>
+    /// <c>{LabTools.DataPath}/ForStore/{UserID}</c>
+    /// </summary>
+    public string SaveDataPath {get; private set;} = "";
+    /// <summary>
+    /// <c>{LabTools.DataPath}/ForSend/{UserID}</c>
+    /// </summary>
+    public string SendDataPath {get; private set;} = "";
+
+    /// <summary>
+    /// 尚待寫入的資料數量
+    /// </summary>
+    public int DataCount => _dataQueue.Count;
 
     // Data Writer
-    private ConcurrentQueue<LabDataBase> _dataQueue;
+    /// <summary>
+    /// 資料寫入佇列 (thread-safe), {DataType, Appendix}
+    /// </summary>
+    private ConcurrentQueue<Tuple<LabDataBase, string>> _dataQueue;
+    /// <summary>
+    /// 監測 _dataQueue 執行緒
+    /// </summary>
     private Thread _writeThread;
-    private Dictionary<Type, LabDataWriter> _dataWriterDic;
+    /// <summary>
+    /// _writeThread 執行緒信號, false 就是該關閉了
+    /// </summary>
+    private bool _writeThreadSignal;
+    /// <summary>
+    /// 各 "DataType+Appendix" 的 Writer
+    /// </summary>
+    private Dictionary<string, LabDataWriter> _dataWriterDic;
     
     // UI
     [SerializeField] private QuittingPanel quitPrefab;
     private QuittingPanel _quittingPanel;
 
+    /* -------------------------------------------------------------------------- */
+
     void IManager.ManagerInit()
     {
+        LabTools.Log("[LabDataManager] Start Init");
+        
         // Get Config
         _labDataConfig = LabTools.GetConfig<LabDataConfig>(true);
 
@@ -64,13 +99,15 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         AndroidHelper.CheckStoragePermission();        
 #endif    
 
-        // (PC)
-        Application.wantsToQuit += () => !IsClientRunning;
+        // (PC) 等到 deinit 完成才准關閉
+        Application.wantsToQuit += () => !IsInited;
 
+        // Init
         GameData = new LabGameData();
-        _dataWriterDic = new Dictionary<Type, LabDataWriter>();
-        _dataQueue = new ConcurrentQueue<LabDataBase>(); 
-        _writeThread = new Thread(Queue2Write);               
+        _dataWriterDic = new Dictionary<string, LabDataWriter>();
+        _dataQueue = new ConcurrentQueue<Tuple<LabDataBase, string>>(); 
+        _writeThreadSignal = true;
+        _writeThread = new Thread(Queue2WriteThread);               
     }
 
     /// <summary>
@@ -78,6 +115,8 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
     /// </summary>
     IEnumerator IManager.ManagerDispose()
     {
+        LabTools.Log("[LabDataManager] Start Dispose");
+
         // Quit UI        
         if (_quittingPanel == null)
         {
@@ -88,22 +127,30 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             _quittingPanel = Instantiate<QuittingPanel>(quitPrefab, container);           
         }
         
+        // Set unrunning 
+        StopRunning();
+
         // wait for Writer finish
         _quittingPanel?.gameObject.SetActive(true);
-        while (_dataQueue.Count > 0 )
+        while (DataCount > 0)
         {
-            LabTools.Log("Remain " + _dataQueue.Count + " Data to be stored.");
-            _quittingPanel?.UpdateInfo(_dataQueue.Count.ToString());
+            LabTools.Log("[LabDataManager] Remain " + DataCount + " Data to be stored.");
+            _quittingPanel?.UpdateInfo(DataCount.ToString());
             yield return new WaitForSeconds(1.0f);
         }
         _quittingPanel?.gameObject.SetActive(false);
 
         // Dispose all Writer
-        foreach (var item in _dataWriterDic)
+        foreach (var writer in _dataWriterDic.Values)
         {
-            item.Value.WriterDispose();
+            writer.Dispose();
         }
-        _writeThread.Abort();
+
+        // kill writer thread
+        _writeThreadSignal = false;
+        yield return new WaitForSeconds(0.2f);
+        if(_writeThread.IsAlive)
+            _writeThread.Abort();
 
         // Clear ForSend
         LabTools.DeleteAllEmptyDir(LabTools.FOR_SEND_DIR);
@@ -112,34 +159,35 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         GameData = null;
         WriteDataAction = null;
         SendDataAction = null;
-        _fileName = "";
-        _dataQueue = new ConcurrentQueue<LabDataBase>();
-        _dataWriterDic = new Dictionary<Type, LabDataWriter>();        
+        FileNamePre = "";
+        _dataQueue = new ConcurrentQueue<Tuple<LabDataBase, string>>();
+        _dataWriterDic = new Dictionary<string, LabDataWriter>();
+        _writeThread = null;
 
-        // Finish Dispose
-        StopUpload();
+        // Finish Dispose        
         IsInited = false;
-        LabTools.Log("LabUploadManager Dispose");
+        LabTools.Log("[LabDataManager] Disposed");
     }
 
     /// <summary>
     /// 存檔功能 啟動
     /// </summary>
-    private void StartUpload()
+    private void StartRunning()
     {
         if (IsClientRunning) 
             return;
-        Debug.Log("[LabData] 啟動");
+        Debug.Log("[LabData] 啟動！開始接受新資料");
         IsClientRunning = true;
     }
 
     /// <summary>
     /// 停止存檔功能
     /// </summary>
-    private void StopUpload()
+    private void StopRunning()
     {
-        if (!IsClientRunning) return;
-        Debug.Log("[LabData] 停止");
+        if (!IsClientRunning) 
+            return;
+        Debug.Log("[LabData] 停止接受新資料");
         IsClientRunning = false;
     }
 
@@ -208,7 +256,7 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         #endregion
 
         #region File Name        
-        _fileName = string.Join("_", 
+        FileNamePre = string.Join("_", 
             _labDataConfig.BucketID,
             _labDataConfig.GameID, 
             string.IsNullOrWhiteSpace(motionIdOverride) ? 
@@ -223,34 +271,42 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         
         #region 初始化本地存檔 ForStore
         // Create folder ForStore
-        _saveDataPath = Path.Combine( LabTools.DataPath, LabTools.FOR_STORE_DIR);
-        LabTools.CreateSaveDataFolder(_saveDataPath);
+        SaveDataPath = Path.Combine(LabTools.DataPath, LabTools.FOR_STORE_DIR);
+        LabTools.CreateSaveDataFolder(SaveDataPath);
         // Create folder for file
-        _saveDataPath = Path.Combine( _saveDataPath, userID);
-        _saveDataPath = LabTools.CreateSaveDataFolder(_saveDataPath);
+        SaveDataPath = Path.Combine(SaveDataPath, userID);
+        SaveDataPath = LabTools.CreateSaveDataFolder(SaveDataPath);
         #endregion
 
         #region 初始化上傳功能 ForSend
         // Create folder ForSend
-        _sendDataPath = Path.Combine( LabTools.DataPath, LabTools.FOR_SEND_DIR);
-        LabTools.CreateSaveDataFolder(_sendDataPath);
+        SendDataPath = Path.Combine(LabTools.DataPath, LabTools.FOR_SEND_DIR);
+        LabTools.CreateSaveDataFolder(SendDataPath);
         // Create folder for file
-        _sendDataPath = Path.Combine(_sendDataPath, userID);
-        _sendDataPath = LabTools.CreateSaveDataFolder(_sendDataPath);
+        SendDataPath = Path.Combine(SendDataPath, userID);
+        SendDataPath = LabTools.CreateSaveDataFolder(SendDataPath);
         #endregion
 
         IsInited = true;
-
-        StartUpload();        
+        StartRunning();        
         _writeThread.Start();
     }   
 
     /// <summary>
     /// 寫入資料
     /// </summary>
-    public void WriteData(LabDataBase data)
+    /// <param name="data">資料</param>
+    /// <param name="appendix">檔案後綴，如果有填會在檔案後面加上多一個_</param>
+    public void WriteData(LabDataBase data, string appendix = "")
     {
-        _dataQueue.Enqueue(data);
+        if(!IsClientRunning)
+        {
+            LabTools.LogError("LabData 未初始化或已停止接受資料");
+            return;
+        }
+
+        var dataToWrite = new Tuple<LabDataBase, string>(data, appendix);
+        _dataQueue.Enqueue(dataToWrite);
         WriteDataAction?.Invoke(data);
     }    
 
@@ -289,113 +345,82 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 
     #region Save Data
 
-    private void Queue2Write()
+    /// <summary>
+    /// (由另外一個 thread 開啟) 持續監測 _dataQueue，將資料寫入
+    /// </summary>
+    private void Queue2WriteThread()
     {
-        while (IsClientRunning)
+        while (_writeThreadSignal)
         {
-            var dataList = new List<LabDataBase>();
-            while (_dataQueue.TryDequeue(out var resultData))
-            {
-                dataList.Add(resultData);
-            }
-            foreach (var d in dataList)
-            {
-                DoOnce(d);
-            }
+            // 休息一下
             Thread.Sleep(100);
-        }
-    }
-    private void DoOnce(LabDataBase data)
-    {
-        if (!IsInited)
-        {
-            LabTools.LogError("LabData 尚未初始化");
-            return;
-        }
-        DataWriterFunc(data);
-    }
-    private void DataWriterFunc(LabDataBase data)
-    {
-        var datatype = data.GetType();
-        // string filePath = Config.SendToServer ? _sendDataPath : _saveDataPath;
-        string filePath = _sendDataPath;  // FIXME　讓使用者選擇要不要上傳？
-        // First time 
-        if (!_dataWriterDic.ContainsKey(datatype))
-        {
-            // Add new Writer to Dic
-            _dataWriterDic.Add(datatype, NewWriter(data, filePath));
-        }
 
-        _dataWriterDic[datatype].WriteData(data);
+            // check if inited
+            if (!IsInited)
+            {
+                continue;
+            }
+
+            // Dequeue all data, attempt to write 
+            List<Tuple<LabDataBase, string>> dataList = new List<Tuple<LabDataBase, string>>();
+            while (_dataQueue.TryDequeue(out var data))
+            {
+                dataList.Add(data);
+            }
+
+            // Write data
+            foreach (var dataTuple in dataList)
+            {
+                var data = dataTuple.Item1;
+                var appendix = dataTuple.Item2;
+                string key = $"{data.GetType().Name}_{appendix}";
+
+                // if no writer exist for this, create one
+                if(!_dataWriterDic.ContainsKey(key))
+                {
+                    _dataWriterDic[key] = NewWriter(data, SendDataPath, appendix);
+                }
+
+                // write data~
+                _dataWriterDic[key].WriteData(data);
+            }
+
+            // TODO _dataWriterDic 數量檢查，避免過多 Writer 導致超過 File Handle 限制
+            if(_dataWriterDic.Count > 300)
+            {
+                Debug.LogWarning("Too many writer exist! Please check if there is any writer not disposed.");
+            }
+        }
     }
-    private LabDataWriter NewWriter( LabDataBase data, string dataPath)
+
+    private LabDataWriter NewWriter(LabDataBase data, string dataPath, string fileNameAppendix)
     {
         // Create data file
-        // SaveFileName = GameID_MotionID_DataType.json
-        string path = Path.Combine(dataPath, $"{_fileName}_{data.GetType().Name}.json");
-        LabTools.CreateData(path);
-
-        LabDataWriter _LW = new LabDataWriter(path);
-        _LW.InitData(data);
-        return _LW;
+        string fileName = $"{FileNamePre}_{data.GetType().Name}" + (string.IsNullOrEmpty(fileNameAppendix) ? "" : $"_{fileNameAppendix}") + ".json";
+        string filePath = Path.Combine(dataPath, fileName);        
+        LabDataWriter writer = new LabDataWriter(filePath);
+        writer.InitData(data);
+        return writer;
     }
 
     #endregion
-
-    #region Android 
-    /*
-
-    protected void OnApplicationPause(bool isPause)
-    {
-        LabTools.Log("Application Pause");
-        if (isPause)
-        {
-            DataPause();
-        }
-        else
-        {
-            //DataResume();
-        }
-    }
-    IEnumerator DataPause()
-    {
-        while (_dataQueue.Count > 0)
-        {
-            Debug.Log(($"Remain {0} Data to be stored", _dataQueue.Count));
-            yield return new WaitForSeconds(1.0f);
-        }
-
-        foreach (var item in _dataWriterDic)
-        {
-            item.Value.SaveData();
-        }
-    }
-
-    */
-    #endregion
-
 }
 
-public class LabDataWriter
+public class LabDataWriter : IDisposable
 {
-    private string _path;
-    // private bool _first = true;
+    protected string _path;
+    protected StreamWriter _stream;
+    // protected bool _first = true;
+
     public LabDataWriter(string path)
     {
         _path = path;
+        // LabTools.CreateFile(path);
+        _stream = new StreamWriter(path, true, Encoding.UTF8);
     }
     public void InitData(LabDataBase data)
     {
-        // string jsonPrefix;
-        // if (LabDataManager.Instance.Config.IsTest != true)
-        // {
-        //     jsonPrefix = LabTools.JsonPrefix.Replace("data", data.GetType().Name);
-        // }
-        // else
-        // {
-        //     jsonPrefix = LabTools.JsonPrefix.Replace("data", data.GetType().Name + LabTools.Test);
-        // }
-        // File.AppendAllText(_path, jsonPrefix);
+        // _first = true;
     }
     public void WriteData(LabDataBase data)
     {    
@@ -404,16 +429,21 @@ public class LabDataWriter
         //     File.WriteAllText(_path, ",");
         //     _first = false;
         // }
-        
-        File.AppendAllText(_path, 
-            JsonConvert.SerializeObject(data, new JsonSerializerSettings{ReferenceLoopHandling = ReferenceLoopHandling.Ignore}) + Environment.NewLine, 
-            Encoding.UTF8);
-        
+
+        string json = JsonConvert.SerializeObject(data, new JsonSerializerSettings{ReferenceLoopHandling = ReferenceLoopHandling.Ignore});        
+        string content = json + Environment.NewLine;
+
+        // Write using IO
+        // File.AppendAllText(_path, content, Encoding.UTF8);
+
+        // Write using StreamWriter
+        _stream.Write(content);
+        _stream.Flush();
     }
 
-    public void WriterDispose()
+    public void Dispose()
     {
-        // FIXME 有時候根本沒叫到這邊
         // File.AppendAllText(_path, LabTools.JsonEnd + Environment.NewLine);
+        _stream.Dispose();
     }
 }

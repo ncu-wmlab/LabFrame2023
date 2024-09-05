@@ -6,6 +6,7 @@ using UnityEngine.UI;
 public class CustomLabDataDemo : MonoBehaviour
 {
     [SerializeField] InputField _nameInput;
+    [SerializeField] InputField _appendixInput;
     [SerializeField] Button _labDataInitButton;
     [SerializeField] Button _writeDataButton;
 
@@ -37,26 +38,33 @@ public class CustomLabDataDemo : MonoBehaviour
             return;
         }
 
-        LabDataManager.Instance.LabDataInit(_nameInput.text);        
+        LabDataManager.Instance.LabDataInit(_nameInput.text);  
+        _nameInput.interactable = false;      
     }
 
     void DoWriteData()
     {
         // Generate a random CustomLabData
-        var customDataObj = new CustomLabData_CustomObject{
-            DemoObjectBool = Random.value > .5f,
-            DemoObjectIntArray = new int[]{Random.Range(0, 100),1, 2, 3}
-        };
         var customData = new CustomLabData{
             CoolInt = Random.Range(0, 100),
             CoolString = "COOL: "+Random.Range(0, 100),
             CoolFloatList = new List<float>{Random.value*100, 4, 8, 7f, 6f, 3f},
-            CoolObject = customDataObj,
+            CoolObject = new CustomLabData_CustomObject{
+                DemoObjectBool = Random.value > .5f,
+                DemoObjectIntArray = new int[]{Random.Range(0, 100),1, 2, 3}
+            }
         };
 
         // Write to LabData
-        LabDataManager.Instance.WriteData(customData);
-        
-        LabPromptBox.Show("Create OK");
+        if(string.IsNullOrEmpty(_appendixInput.text))
+        {
+            LabDataManager.Instance.WriteData(customData);
+            LabPromptBox.Show("已寫入一筆 CustomLabData 紀錄");
+        }
+        else
+        {
+            LabDataManager.Instance.WriteData(customData, _appendixInput.text);
+            LabPromptBox.Show("已寫入一筆 CustomLabData 紀錄，檔名後綴："+_appendixInput.text);
+        }
     }
 }

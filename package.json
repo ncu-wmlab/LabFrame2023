@@ -1,6 +1,6 @@
 {
     "name": "com.xrlab.labframe",
-    "version": "0.0.17",
+    "version": "0.0.18",
     "displayName": "Lab Frame 2023",
     "description": "NCU WMLABxXRLAB (Lab317/318)\nLab Frame 2023",
     "unity": "2020.3",
@@ -18,13 +18,12 @@
     },
     "samples": [
       {
-        "displayName": "Sample",
-        "description": "demo of generic platform",
+        "displayName": "Demo",
+        "description": "框架簡易使用說明",
         "path": "Samples~/Demo/"
       },
       {
-        "displayName": "Android Sample",
-        "description": "Sample for Android",
+        "displayName": "AndroidDemo",
         "path": "Samples~/AndroidDemo/"
       }
     ]

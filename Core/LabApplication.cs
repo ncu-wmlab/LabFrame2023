@@ -43,7 +43,7 @@ public class LabApplication : LabSingleton<LabApplication>
             var manager = managerGameObject.GetComponent<IManager>();
             if (manager == null)
             {
-                Debug.LogError($"Cannot find IManager in {managerPrefab.name}!");
+                LabTools.LogError($"Cannot find IManager in {managerPrefab.name}!");
                 continue;
             }
             managerGameObject.name = manager.GetType().Name;
@@ -59,7 +59,7 @@ public class LabApplication : LabSingleton<LabApplication>
             }
             catch(Exception e)
             {
-                Debug.LogError($"<b>Error while initializing {p.GetType().Name}!</b> {e}");
+                LabTools.LogError($"<b>Error while initializing {p.GetType().Name}!</b> {e}");
             }
         });
     }
@@ -69,10 +69,12 @@ public class LabApplication : LabSingleton<LabApplication>
     /// </summary>
     private IEnumerator ApplicationDisposeAsync(DisposeOptions options = DisposeOptions.Quit)
     {
+        Debug.Log($"[LabFrame2023] Disposing...");
         // Dispose all managers
-        for (int i = 0; i < _managers.Count; i++)
+        for (int i = 1; i < _managers.Count; i++)
         {
-            yield return StartCoroutine(_managers[i].ManagerDispose());        
+            print($"[LabFrame2023] Disposing {_managers[i].GetType().Name} ({i+1}/{_managers.Count})");
+            StartCoroutine(_managers[i].ManagerDispose());
         }
         _managers.Clear();
 
@@ -86,8 +88,8 @@ public class LabApplication : LabSingleton<LabApplication>
         switch (options)
         {
             case DisposeOptions.Restart:
+                yield return new WaitForSecondsRealtime(1);  // FIXME 這裡應該要等待所有 Manager Dispose 完畢
                 ApplicationInit();
-                yield return null;
                 break;
             case DisposeOptions.Quit:
                 Application.Quit();
@@ -95,7 +97,6 @@ public class LabApplication : LabSingleton<LabApplication>
             default:
                 throw new ArgumentOutOfRangeException();
         }
-        yield return null;
     }
 
     // Ensure all IManagers has disposed before quit.
@@ -103,8 +104,8 @@ public class LabApplication : LabSingleton<LabApplication>
     // e.g. android 滑掉 app 、iOS 要設定 exitOnSuspend、WEBGL 完全沒辦法、或是 OS 強制殺掉 app
     protected override void OnApplicationQuit()
     {
+        StartCoroutine(ApplicationDisposeAsync());
         base.OnApplicationQuit();
-        ApplicationDisposeAsync();
     }
     
     /// <summary>

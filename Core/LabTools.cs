@@ -112,17 +112,16 @@ namespace LabFrame2023
         /// 創建檔案
         /// </summary>
         /// <param name="path"></param>
-        public static void CreateData(string path)
+        public static void CreateFile(string path)
         {
             if (!File.Exists(path))
             {
                 File.Create(path).Dispose();
-
                 Log("Success Create: " + path);
             }
             else
             {
-                Log("File already exsist! path: " + path);
+                LogError("File already exist! path: " + path);
             }
 
         }
