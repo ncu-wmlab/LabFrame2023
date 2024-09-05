@@ -21,7 +21,7 @@ public class AndroidHelper
     /// com.xrlab.labframe_plugin.Main
     /// </summary>
     protected static readonly AndroidJavaClass _pluginClass;
-
+#endif
 
     static AndroidHelper()
     {
@@ -43,7 +43,11 @@ public class AndroidHelper
     /// </summary>
     public static bool CheckStoragePermission()
     {
+#if UNITY_ANDROID
         return _pluginClass.CallStatic<bool>("RequestStoragePermission", Application.identifier);
+#else        
+        return true;
+#endif
     }
     
     /// <summary>
@@ -60,11 +64,11 @@ public class AndroidHelper
         //     // launchIntent.Call<AndroidJavaObject>("putExtra", "User_Info", user_Info); // put some more params
         //     CurrentActivity.Call("startActivity", launchIntent);
         // }
-        
+#if UNITY_ANDROID
         _pluginClass.CallStatic("OpenApk", packageName);
-
         if(quitOnLaunch)
             Application.Quit();
+#endif
     }
 
     /// <summary>
@@ -73,7 +77,8 @@ public class AndroidHelper
     /// <param name="msg">訊息</param>
     public static void MakeToast(string msg)
     {
+#if UNITY_ANDROID
         _pluginClass.CallStatic("MakeToast", msg);
-    }
 #endif
+    }
 }
