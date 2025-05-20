@@ -1,17 +1,18 @@
 #import "iOSHelper.h"
 #import <UIKit/UIKit.h>
 #import <Photos/Photos.h>
+#import <UnityFramework/UnityFramework-Swift.h>
 
-@interface iOSHelperImplementation : NSObject
-+ (void)requestPhotoLibraryAccess:(NSString *)callbackGameObject :(NSString *)callbackMethod;
-+ (BOOL)openURLScheme:(NSString *)urlScheme;
-+ (void)showNotification:(NSString *)message duration:(CGFloat)duration;
-+ (NSString *)getLaunchParameters;
-+ (void)setLaunchParameters:(NSString *)parameters;
-+ (void)processLaunchOptions:(NSDictionary *)options;
-+ (void)processIncomingURL:(NSURL *)url;
-+ (void)releaseAppGroupPath:(NSString *)path;
-@end
+// @interface iOSHelperImplementation : NSObject
+// + (void)requestPhotoLibraryAccess:(NSString *)callbackGameObject :(NSString *)callbackMethod;
+// + (BOOL)openURLScheme:(NSString *)urlScheme;
+// + (void)showNotification:(NSString *)message duration:(CGFloat)duration;
+// + (NSString *)getLaunchParameters;
+// + (void)setLaunchParameters:(NSString *)parameters;
+// + (void)processLaunchOptions:(NSDictionary *)options;
+// + (void)processIncomingURL:(NSURL *)url;
+// + (void)releaseAppGroupPath:(NSString *)path;
+// @end
 
 // c language interface
 bool _iOS_RequestStoragePermission() {

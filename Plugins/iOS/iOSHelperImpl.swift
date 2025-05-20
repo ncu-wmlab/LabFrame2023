@@ -2,6 +2,9 @@ import Foundation
 import UIKit
 import Photos
 
+@_silgen_name("UnitySendMessage")
+func UnitySendMessage(_ objectName: UnsafePointer<CChar>, _ methodName: UnsafePointer<CChar>, _ message: UnsafePointer<CChar>) -> Void
+
 @objc public class iOSHelperImplementation: NSObject {
     
     // to store launch parameters
