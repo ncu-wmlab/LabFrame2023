@@ -52,7 +52,7 @@ namespace LabFrame2023
             ConfigPath = Path.Combine(Application.persistentDataPath, CONFIG_DIR);
 #else
             ConfigPath = Path.Combine(Application.persistentDataPath, CONFIG_DIR);
-            Debug.Log("Untested platform, use default path: " + ConfigPath");
+            Debug.Log("Untested platform, use default path: " + ConfigPath);
 #endif
         }
 

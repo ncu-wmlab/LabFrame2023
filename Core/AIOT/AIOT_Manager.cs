@@ -41,8 +41,13 @@ namespace LabFrame2023.AIOT
                 using AndroidJavaObject extras = intent.Call<AndroidJavaObject>("getExtras");
                 paramJson = extras.Call<string>("getString", "User_Info");
             }
+#elif UNITY_IOS
+            paramJson = iOSHelper.GetLaunchParameters();
+            if(!string.IsNullOrEmpty(paramJson)) {
+                _gameParams = JsonUtility.FromJson<AIOT_GameParams>(paramJson);
+            }                    
 #else
-            Debug.LogError("[AIOT] Unsupported platform");                    
+            Debug.LogError("[AIOT] Unsupported platform");
 #endif
             // 拿到我們要的啟動參數
             if(string.IsNullOrEmpty(paramJson))

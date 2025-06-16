@@ -164,6 +164,13 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
         _dataWriterDic = new Dictionary<string, LabDataWriter>();
         _writeThread = null;
 
+        #if UNITY_IOS && !UNITY_EDITOR
+        if (!string.IsNullOrEmpty(LabTools.DataPath) && LabTools.DataPath.StartsWith(iOSHelper.GetSendPath()))
+        {
+            iOSHelper.ReleaseSendPath(iOSHelper.GetSendPath());
+        }
+        #endif
+
         // Finish Dispose        
         IsInited = false;
         LabTools.Log("[LabDataManager] Disposed");
@@ -247,6 +254,19 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
 #elif UNITY_ANDROID
             // Android: /storage/emulated/0/LabData/{GameID}
             LabTools.SetDataPath(Path.Combine("/storage/emulated/0/LabData/", _labDataConfig.GameID));
+#elif UNITY_IOS
+            // iOS Platform: {Application.persistentDataPath}/LabData/{GameID}
+            string path = iOSHelper.GetSendPath();
+            if(!string.IsNullOrEmpty(path))
+            {
+                LabTools.SetDataPath(Path.Combine(path, "LabData", _labDataConfig.GameID));
+                LabTools.Log($"iOS AppGroup Path detected!  LabDataPath={LabTools.DataPath}");
+            }
+            else
+            {
+                Debug.LogError("[LabDataManager] iOS AppGroup Path not found, using default path.");
+                LabTools.SetDataPath(Path.Combine(Application.persistentDataPath, "LabData", _labDataConfig.GameID));
+            }
 #else
             // Other Platform: {Application.persistentDataPath}/LabData/{GameID}
             LabTools.SetDataPath(Path.Combine(Application.persistentDataPath, "LabData", _labDataConfig.GameID));
