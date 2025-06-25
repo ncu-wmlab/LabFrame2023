@@ -96,6 +96,10 @@ namespace LabFrame2023.AIOT
             string packname = _config.AIOTPlatformPackageName;
             Debug.Log($"Now jumping back to AIOT Platform ({packname})");
             AndroidHelper.OpenApk(packname);
+#elif UNITY_IOS && !UNITY_EDITOR
+            // iOS 目前沒有跳回 AIOT Platform 的 API
+            Debug.Log($"Let's go back to {packname} in iOS ");
+            iOSHelper.OpenApplication("xrlab-"+packname);
 #endif
         }
     }

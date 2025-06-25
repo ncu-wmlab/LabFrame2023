@@ -259,7 +259,8 @@ public class LabDataManager : LabSingleton<LabDataManager>, IManager
             string path = iOSHelper.GetSendPath();
             if(!string.IsNullOrEmpty(path))
             {
-                LabTools.SetDataPath(Path.Combine(path, "LabData", _labDataConfig.GameID));
+                // path = /private/var/mobile/Containers/Shared/AppGroup/[隨機UUID]/ForSend/
+                LabTools.SetDataPath(Path.Combine(path,"LabData", _labDataConfig.GameID));
                 LabTools.Log($"iOS AppGroup Path detected!  LabDataPath={LabTools.DataPath}");
             }
             else
