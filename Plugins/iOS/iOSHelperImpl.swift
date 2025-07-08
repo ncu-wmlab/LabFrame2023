@@ -71,7 +71,11 @@ func UnitySendMessage(_ objectName: UnsafePointer<CChar>, _ methodName: UnsafePo
     }
     
     @objc public static func getLaunchParameters() -> String {
-        return cachedLaunchParameters ?? ""
+        let result = cachedLaunchParameters ?? ""
+        print("Swift: getLaunchParameters() 被呼叫")
+        print("Swift: cachedLaunchParameters = '\(result)'")
+        print("Swift: 回傳結果長度: \(result.count)")
+        return result
     }
     
     // MARK: - parameters processing (需在AppDelegate中集成)
@@ -93,30 +97,59 @@ func UnitySendMessage(_ objectName: UnsafePointer<CChar>, _ methodName: UnsafePo
         }
     }
     
-    @objc public static func processIncomingURL(_ url: URL) {
-        // 解析URL參數
+    @objc public static func processIncomingURL(_ url: URL) 
+    {
+        print("=== Swift Debug Start ===")
+        print("Swift: 收到 URL: \(url.absoluteString)")
+        print("Swift: URL Scheme: \(url.scheme ?? "nil")")
+        print("Swift: URL Host: \(url.host ?? "nil")")
+        print("Swift: URL Path: \(url.path)")
+        print("Swift: URL Query: \(url.query ?? "nil")")
+        
         if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            print("Swift: ✓ URL 組件解析成功")
             var paramDict = [String: String]()
             
-            // 從查詢參數中提取數據
             if let queryItems = components.queryItems {
-                for item in queryItems {
+                print("Swift: ✓ 查詢項目數量: \(queryItems.count)")
+                for (index, item) in queryItems.enumerated() {
+                    print("Swift: 參數[\(index)] \(item.name) = '\(item.value ?? "nil")'")
                     paramDict[item.name] = item.value
                 }
+            } else {
+                print("Swift: ✗ 沒有查詢項目")
             }
             
-            // 將參數序列化為JSON
+            print("Swift: 準備序列化的參數字典: \(paramDict)")
+            
             if !paramDict.isEmpty {
                 do {
                     let jsonData = try JSONSerialization.data(withJSONObject: paramDict)
                     if let jsonString = String(data: jsonData, encoding: .utf8) {
                         cachedLaunchParameters = jsonString
+                        print("Swift: ✓ JSON 序列化成功: \(jsonString)")
+                        print("Swift: ✓ 參數已快取到 cachedLaunchParameters")
+                        
+                        // 嘗試立即通知 Unity
+                        print("Swift: 嘗試呼叫 UnitySendMessage...")
+                        UnitySendMessage("TestPara", "OnURLParametersReceived", jsonString)
+                        print("Swift: ✓ UnitySendMessage 呼叫完成")
+                    } else {
+                        print("Swift: ✗ 無法將 JSON Data 轉換為 String")
                     }
                 } catch {
-                    print("Error serializing parameters: \(error)")
+                    print("Swift: ✗ JSON 序列化錯誤: \(error)")
+                    print("Swift: ✗ 錯誤詳情: \(error.localizedDescription)")
                 }
+            } else {
+                print("Swift: ✗ 參數字典為空，沒有可序列化的內容")
             }
+        } else {
+            print("Swift: ✗ URL 組件解析失敗")
+            print("Swift: ✗ 原始 URL: \(url.absoluteString)")
         }
+        
+        print("=== Swift Debug End ===")
     }
 
     // MARK: - App Groups Support

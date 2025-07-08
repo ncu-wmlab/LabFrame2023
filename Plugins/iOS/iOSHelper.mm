@@ -35,12 +35,20 @@ void _iOS_ShowNotification(const char* message, float duration)
 
 const char* _iOS_GetLaunchParameters() 
 {
+    NSLog(@"[iOSHelper.mm] _iOS_GetLaunchParameters 被調用");
     NSString *params = [iOSHelperImplementation getLaunchParameters];
+    NSLog(@"[iOSHelper.mm] Swift 返回的參數: %@", params);
+
+    if (params == nil || [params length] == 0) {
+        NSLog(@"[iOSHelper.mm] 參數為空，返回空字符串");
+        return strdup(""); // 返回空字符串而不是 NULL
+    }
     // 注意：此處由於返回的字串需由Unity管理，需使用特殊記憶體處理
     // 將Swift字串轉換為C字串並確保記憶體不會被釋放
     const char* cString = [params UTF8String];
     char* result = (char*)malloc(strlen(cString) + 1);
     strcpy(result, cString);
+    NSLog(@"[iOSHelper.mm] 返回的 C 字串: %s", result);
     return result;
 }
 

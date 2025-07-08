@@ -297,119 +297,77 @@ public class iOSPostProcessor
     private static void UpdateAppDelegate(string buildPath)
     {
         string appDelegatePath = Path.Combine(buildPath, "Classes/UnityAppController.mm");
-        if (!File.Exists(appDelegatePath)) 
+        if (!File.Exists(appDelegatePath))
         {
-            Debug.LogError($"[iOSPostProcessor] 找不到AppDelegate文件: {appDelegatePath}");
+            Debug.LogError($"[iOSPostProcessor] UnityAppController.mm not found");
             return;
         }
-        
+
         string content = File.ReadAllText(appDelegatePath);
         bool modified = false;
-        
-        // 在頂部導入我們的頭文件 - 只有在不存在時才添加
+
+        // 1. 確保 import 存在
         if (!content.Contains("#import \"iOSHelper.h\""))
         {
-            int insertPos = content.IndexOf("#import ");
-            if (insertPos >= 0)
+            int firstImportPos = content.IndexOf("#import ");
+            if (firstImportPos >= 0)
             {
-                content = content.Insert(insertPos, "#import \"iOSHelper.h\"\n");
+                content = content.Insert(firstImportPos, "#import \"iOSHelper.h\"\n");
                 modified = true;
-                Debug.Log("[iOSPostProcessor] 已添加iOSHelper.h導入");
+                Debug.Log("[iOSPostProcessor] 已添加 iOSHelper.h import");
             }
         }
-        
-        // 使用更嚴格的正則表達式匹配方法簽名，避免重複添加
-        bool hasOpenURLMethod = Regex.IsMatch(content, @"- \s*\(\s*BOOL\s*\)\s*application\s*:\s*\(\s*UIApplication\s*\*\s*\)\s*\w+\s+openURL\s*:\s*\(\s*NSURL\s*\*\s*\)\s*\w+\s+options\s*:");
-        bool hasContinueUserActivityMethod = Regex.IsMatch(content, @"- \s*\(\s*BOOL\s*\)\s*application\s*:\s*\(\s*UIApplication\s*\*\s*\)\s*\w+\s+continueUserActivity\s*:\s*\(\s*NSUserActivity\s*\*\s*\)\s*\w+\s+restorationHandler\s*:");
-        
-        Debug.Log($"[iOSPostProcessor] 現有方法檢查: openURL方法={hasOpenURLMethod}, continueUserActivity方法={hasContinueUserActivityMethod}");
-        
-        // 使用更寬鬆的正則表達式匹配 didFinishLaunchingWithOptions 方法
-        Regex didFinishLaunchingRegex = new Regex(@"- \(BOOL\)application:.*didFinishLaunchingWithOptions:.*\{");
-        Match didFinishMatch = didFinishLaunchingRegex.Match(content);
-        
-        // 檢查是否已經插入了啟動處理代碼
-        bool hasLaunchCodeInserted = content.Contains("// 處理 AIOT 啟動參數") || 
-                                content.Contains("_iOS_ProcessLaunchOptions");
-        
-        if (didFinishMatch.Success && !hasLaunchCodeInserted)
+
+        // 2. 添加啟動處理
+        if (!content.Contains("_iOS_ProcessLaunchOptions"))
         {
-            // 找到方法的開括號位置
-            int bracePos = content.IndexOf('{', didFinishMatch.Index);
-            if (bracePos > 0)
+            string searchPattern = "- (BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions";
+            int methodPos = content.IndexOf(searchPattern);
+            if (methodPos >= 0)
             {
-                // 插入我們的代碼在開括號後 - 使用C接口而非直接調用Swift
-                string insertCode = "\n    // 處理 AIOT 啟動參數\n" +
-                                "    _iOS_ProcessLaunchOptions((__bridge void*)launchOptions);\n";
-                
-                content = content.Insert(bracePos + 1, insertCode);
-                modified = true;
-                Debug.Log("[iOSPostProcessor] 已添加啟動參數處理代碼");
-            }
-        }
-        
-        // 查找 @implementation UnityAppController 的結束處 (@end)
-        int implStartPos = content.IndexOf("@implementation UnityAppController");
-        if (implStartPos >= 0)
-        {
-            int implEndPos = content.IndexOf("@end", implStartPos);
-            if (implEndPos > implStartPos)
-            {
-                // 只在需要時添加我們的方法
-                StringBuilder methodsToAdd = new StringBuilder();
-                
-                // 只有在方法不存在時才添加
-                if (!hasOpenURLMethod)
+                int bracePos = content.IndexOf('{', methodPos);
+                if (bracePos > 0)
                 {
-                    methodsToAdd.Append("\n// 處理通過 URL Scheme 啟動應用\n");
-                    methodsToAdd.Append("- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options {\n");
-                    methodsToAdd.Append("    return _iOS_ProcessURL([url.absoluteString UTF8String]);\n");
-                    methodsToAdd.Append("}\n");
-                    Debug.Log("[iOSPostProcessor] 將添加openURL方法");
-                }
-                
-                // 只有在方法不存在時才添加
-                if (!hasContinueUserActivityMethod)
-                {
-                    methodsToAdd.Append("\n// 處理 Universal Links\n");
-                    methodsToAdd.Append("- (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray<id<UIUserActivityRestoring>> * _Nullable))restorationHandler {\n");
-                    methodsToAdd.Append("    if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {\n");
-                    methodsToAdd.Append("        return _iOS_ProcessURL([userActivity.webpageURL.absoluteString UTF8String]);\n");
-                    methodsToAdd.Append("    }\n");
-                    methodsToAdd.Append("    return NO;\n");
-                    methodsToAdd.Append("}\n");
-                    Debug.Log("[iOSPostProcessor] 將添加continueUserActivity方法");
-                }
-                
-                // 如果有方法需要添加，插入到@end之前
-                if (methodsToAdd.Length > 0)
-                {
-                    content = content.Insert(implEndPos, methodsToAdd.ToString());
+                    string insertCode = "\n    // 處理 AIOT 啟動參數\n" +
+                                    "    _iOS_ProcessLaunchOptions((__bridge void*)launchOptions);\n";
+                    content = content.Insert(bracePos + 1, insertCode);
                     modified = true;
+                    Debug.Log("[iOSPostProcessor] 已添加啟動參數處理");
                 }
             }
-            else
-            {
-                Debug.LogError("[iOSPostProcessor] 找不到 @implementation UnityAppController 的結束處");
-            }
         }
-        else
+
+        // 3. 修改 openURL 方法 - 使用精確的文本搜索和替換
+        string openURLPattern = "AppController_SendNotificationWithArg(kUnityOnOpenURL, notifData);\n    return YES;";
+        if (content.Contains(openURLPattern) && !content.Contains("_iOS_ProcessURL"))
         {
-            Debug.LogError("[iOSPostProcessor] 找不到 @implementation UnityAppController");
+            string replacement = "AppController_SendNotificationWithArg(kUnityOnOpenURL, notifData);\n    \n    // LabFrame2023 URL 處理\n    _iOS_ProcessURL([url.absoluteString UTF8String]);\n    \n    return YES;";
+            content = content.Replace(openURLPattern, replacement);
+            modified = true;
+            Debug.Log("[iOSPostProcessor] 已修改 openURL 方法");
         }
-        
-        // 如果有修改，寫回文件
+
+        // 4. 修改 continueUserActivity 方法 - 如果還沒修改
+        string continuePattern = "if (url)\n        UnitySetAbsoluteURL(url.absoluteString.UTF8String);\n    return YES;";
+        if (content.Contains(continuePattern) && !content.Contains("_iOS_ProcessURL.*continueUserActivity"))
+        {
+            string replacement = "if (url)\n        UnitySetAbsoluteURL(url.absoluteString.UTF8String);\n    \n    // LabFrame2023 處理\n    if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {\n        _iOS_ProcessURL([userActivity.webpageURL.absoluteString UTF8String]);\n    }\n    \n    return YES;";
+            content = content.Replace(continuePattern, replacement);
+            modified = true;
+            Debug.Log("[iOSPostProcessor] 已修改 continueUserActivity 方法");
+        }
+
         if (modified)
         {
             File.WriteAllText(appDelegatePath, content);
-            Debug.Log("[iOSPostProcessor] AppDelegate 已更新");
+            Debug.Log("[iOSPostProcessor] UnityAppController.mm 更新完成");
         }
         else
         {
-            Debug.Log("[iOSPostProcessor] AppDelegate 不需要更新，所有必要的方法已存在");
+            Debug.Log("[iOSPostProcessor] 無需修改或已包含必要代碼");
         }
     }
-    
+        
     // 新增方法 - 處理 SceneDelegate
     private static void HandleSceneDelegate(string buildPath)
     {

@@ -43,6 +43,7 @@ namespace LabFrame2023.AIOT
             }
 #elif UNITY_IOS
             paramJson = iOSHelper.GetLaunchParameters();
+            Debug.Log("[AIOT] iOSHelper.GetLaunchParameters() 結果: " + paramJson);
             if(!string.IsNullOrEmpty(paramJson)) {
                 _gameParams = JsonUtility.FromJson<AIOT_GameParams>(paramJson);
             }                    
